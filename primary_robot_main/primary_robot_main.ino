@@ -7,6 +7,8 @@
 #define IR4 A3
 #define IR5 A4
 #define IR6 A5
+#define IR7 A6
+#define IR8 A7
 
 #define trig 10
 #define echo 11
@@ -25,9 +27,9 @@ int IN4 = 4;
 
 
 int Threshold = 100;
-int IR_val[6] = {0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
-int IR_Bin_val[6] = {0, 0, 0, 0, 0, 0};
-double IR_weights[6] = {-3, -2, -1, 1, 2, 3};//{-5000, -2000, -1000, 1000, 2000, 5000}; //{-4000, -2000, -1000, 1000, 2000, 4000};  //{-32, -16, -8, -4, -2, 0, 2, 4, 8, 16, 32}
+int IR_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
+int IR_Bin_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+double IR_weights[8] = {-4, -3, -2, -1, 1, 2, 3, 4};//{-5000, -2000, -1000, 1000, 2000, 5000}; //{-4000, -2000, -1000, 1000, 2000, 4000};  //{-32, -16, -8, -4, -2, 0, 2, 4, 8, 16, 32}
 
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
@@ -68,25 +70,10 @@ void measure_distance();
 int read_color_sensor();
 int read_bluetooth_value();
 void send_bluetooth_value(int value);
-void checkpoint_one_to_gate_A();
-void gate_A_to_vault();
-void vault_to_ramp_junction();
-void ramp_start_to_gate_B();
-void gate_B_to_ramp_end();
-void ramp_end_to_cross();
-void cross_to_obstacle_box_to_cross();
-void cross_to_ramp_end();
-void ramp_end_to_pole_junction();
-void pole_junction_to_pole();
-void pole_to_pole_junction();
-void pole_junction_to_finish();
-
-
-
 
 void setup()
 {
-    Serial.begin(9600);
+  Serial.begin(9600);
 
 	// Set all the motor control pins to outputs
 	pinMode(ENA, OUTPUT);
@@ -95,8 +82,8 @@ void setup()
 	pinMode(IN2, OUTPUT);
 	pinMode(IN3, OUTPUT);
 	pinMode(IN4, OUTPUT);
-    pinMode(trig, OUTPUT);
-    pinMode(echo, INPUT);
+  pinMode(trig, OUTPUT);
+  pinMode(echo, INPUT);
 	
 	// Turn off motors - Initial state
     stop();
@@ -104,18 +91,7 @@ void setup()
 
 void loop()
 {
-    checkpoint_one_to_gate_A();
-    gate_A_to_vault();
-    vault_to_ramp_junction();
-    ramp_start_to_gate_B();
-    gate_B_to_ramp_end();
-    ramp_end_to_cross();
-    cross_to_obstacle_box_to_cross();
-    cross_to_ramp_end();
-    ramp_end_to_pole_junction();
-    pole_junction_to_pole();
-    pole_to_pole_junction();
-    pole_junction_to_finish();
+
 }
 
 void set_forward()
@@ -297,7 +273,7 @@ void read_ir()
 //    }
 //    Serial.println(" ");
 
-       for (int i = 0; i < 6; i++)
+       for (int i = 0; i < 8; i++)
     {
         IR_val[i]=0;
     }
@@ -309,13 +285,15 @@ void read_ir()
         IR_val[3] += analogRead(IR4);
         IR_val[4] += analogRead(IR5);
         IR_val[5] += analogRead(IR6);
+        IR_val[6] += analogRead(IR7);
+        IR_val[7] += analogRead(IR8);
     }
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < 8; i++)
     {
         IR_val[i]=IR_val[i]/3;
     }
 
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 8; i++)
    {
      if (IR_val[i] >= Threshold)
      {
@@ -327,7 +305,7 @@ void read_ir()
      }
    }
 
-     for (int i = 0; i < 6; i++)
+     for (int i = 0; i < 8; i++)
    {
      Serial.print(IR_val[i]);
      Serial.print(" ");
@@ -338,7 +316,7 @@ void read_ir()
 
 void line_follow()
 {
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 8; i++)
         {
         error += IR_weights[i] * IR_Bin_val[i];  //IR_Bin_val
         }
@@ -378,214 +356,4 @@ int measure_distance()
     int duration = ultrasonic.ping_median(); // sends out 5 pulses and takes the median duration
     int distance = ultrasonic.convert_in(duration)*2.54  // distance in centimeters
     return distance;
-}
-
-void checkpoint_one_to_gate_A()
-{
-    if (stage==0)
-    {
-        while (measure_distance()>10)
-        {
-            line_follow();
-        }
-        else{
-            stop();
-            stage+=1;
-        }
-    }
-}
-
-void gate_A_to_vault()
-{
-    if (stage==1 && measure_distance()>20)
-    {
-        forward();
-        while (!(IR_val[0]==0 && IR_val[1]==0 && IR_val[2]==0 && IR_val[3]==0 && IR_val[4]==0 && IR_val[5]==0))
-        {
-            line_follow(); //may will have to modify here. (slow speeds, calibrate the departure angle etc.)
-        }
-         
-        else
-        {
-            stop();
-            //might will have to call a forward function to get closer to the box
-            int color = read_color_sensor();
-            send_bluetooth_value(color);
-            turn_left();
-            delay(100);  // add enough delay for the robot to turn 180 degrees
-            stage+=1;
-        }
-    }
-}
-
-void vault_to_ramp_junction()
-{
-    if (stage==2)
-    {
-        forward();
-        while (!(IR_val[0]==0 && IR_val[1]==0 && IR_val[2]==0 && IR_val[3]==0))
-        {
-            line_follow();
-        }
-        else{
-            stop();
-            turn_left();
-            delay(20); // add enough delay to turn 90 degrees
-            stage+=1;
-        }
-    }
-}
-
-void ramp_start_to_gate_B()
-{
-    if (stage==3)
-    {
-        while (measure_distance()>10)
-        {
-            line_follow();
-        }
-        else{
-            stop();
-            stage+=1;
-        }
-    }
-}
-
-void gate_B_to_ramp_end()
-{
-    if (stage==4 && measure_distance()>20)
-    {
-        while (!(IR_val[0]==0 && IR_val[1]==0 && IR_val[2]==0 && IR_val[3]==0))
-        {
-            line_follow();
-        }
-        else{
-            stop();
-            turn_left();
-            delay(200); //turn 180 degrees
-            stage+=1;
-        }
-    }
-}
-
-void ramp_end_to_cross()
-{
-    if (stage==6)
-    {
-        while(!(IR_val[0]==0 && IR_val[1]==0 && IR_val[2]==0 && IR_val[3]==0 && IR_val[4]==0 && IR_val[5]==0))
-        {
-            line_follow();
-        }
-        else{
-            stop(); // not necessary
-            turn_left();
-            delay(200); // turn the robot 180 degrees
-            stage+=1;
-        }
-    }
-}
-
-void cross_to_obstacle_box_to_cross()
-{
-    if (stage==7)
-    {
-        backword();
-        delay(2000); // add delay such that the vehicle would travel 30 cm 
-        forward();
-        delay(1500); // add delay such that the vehicle would travel 30 cm without the obstacle
-        stage+=1;
-    }
-}
-
-void cross_to_ramp_end()
-{
-    if (stage==8)
-    {
-        int temp=0;
-        while (true)
-        {
-            line_follow();
-            if (IR_val[0]==0 && IR_val[1]==0 && IR_val[2]==0 && IR_val[3]==0)
-            {
-                turn_left();
-                delay(50); // delay to turn 90 degrees
-                temp+=1
-            }
-            if (temp==2)
-            {
-                stage+=1;
-                break;
-            }
-        }
-    }
-}
-
-void ramp_end_to_pole_junction()
-{
-    if (stage==9)
-    {
-        while (!(IR_val[5]==0 && IR_val[4]==0 && IR_val[3]==0 && IR_val[2]==0))
-        {
-            line_follow();
-        }
-        else
-        {
-            turn_right();
-            delay(200);
-            stage+=1;
-        }
-    }
-}
-
-void pole_junction_to_pole()
-{
-    if (stage==10)
-    {
-        while (measure_distance()<12)
-        {
-            line_follow();
-        }
-        else{
-            forward();
-            delay(200); // give enough delay for the robot to go and touch the pole
-            backword();
-            delay(200); 
-            turn_left();
-            delay(500); // give enough delay for the robot to turn 180 degrees
-            stage+=1;
-        }
-    }
-}
-
-void pole_to_pole_junction()
-{
-    if (stage==11)
-    {
-        while (!(IR_val[5]==0 && IR_val[4]==0 && IR_val[3]==0 && IR_val[2]==0))
-        {
-            line_follow();
-        }
-        else{
-            turn_right();
-            delay(200); // give enough delay for the robot to turn 90 degrees
-            stage+=1;
-        }
-    }
-}
-
-void pole_junction_to_finish()
-{
-    if (stage==12)
-    {
-        while (!(IR_val[0]==0 && IR_val[1]==0 && IR_val[2]==0 && IR_val[3]==0 && IR_val[4]==0 && IR_val[5]==0 ))
-        {
-            line_follow();
-        }
-        else{
-            forward();
-            delay(100); // enough delay for the robot to go 10 cm
-            stop();
-            serial.Println("All tasks done!");
-        }
-    }
 }
