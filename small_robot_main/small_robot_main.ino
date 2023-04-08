@@ -49,8 +49,10 @@ float previousError = 0; //46
 
 int stage = 0;
 
-void forward();
-void pid_forward(int steps);
+void set_forward();
+void forward();  // sets forward and go forward
+void pid_forward(int steps);  // go forward with pid output for a given number of steps
+void set_backword();
 void backword();
 void pid_backward(int steps);
 void turn_left();
@@ -116,6 +118,14 @@ void loop()
     pole_junction_to_finish();
 }
 
+void set_forward()
+{
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);   
+}
+
 void forward()
 {
     digitalWrite(IN1, HIGH);
@@ -139,6 +149,14 @@ void pid_forward(int count) {
         delay(2);
     }
     stop();
+}
+
+void set_backword()
+{
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
 }
 
 void backword()
@@ -186,6 +204,60 @@ void turn_right()
     LMotorSpeed = Left_MotorBase_speed;
     RMotorSpeed = Right_MotorBase_speed;
     motor_speed();
+}
+
+void turn_left_90()
+{
+    turn_left();
+    delay(500);  // will have to change the delay
+    stop();
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+    do {
+        LMotorSpeed = Left_MotorBase_speed;
+        RMotorSpeed = Right_MotorBase_speed;
+        motor_speed();
+        read_IR();
+    } while (!(IR_val[2] == 0 & IR_val[3] == 0));
+        stop();
+}
+
+void turn_right_90()
+{
+    turn_right();
+    delay(500);
+    stop();
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+    do {
+        LMotorSpeed = turnspeed;
+        RMotorSpeed = turnspeed;
+        motor_speed();
+        read_ir();
+    } while (!(IR_val[2] == 1 & IR_val[3] == 1));
+    stop();
+}
+
+void turn_left_180()
+{
+    turn_left();
+    delay(1000);  // will have to change the delay
+    stop();
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+    do {
+        LMotorSpeed = Left_MotorBase_speed;
+        RMotorSpeed = Right_MotorBase_speed;
+        motor_speed();
+        read_IR();
+    } while (!(IR_val[2] == 0 & IR_val[3] == 0));
+        stop();   
 }
 
 void stop()
