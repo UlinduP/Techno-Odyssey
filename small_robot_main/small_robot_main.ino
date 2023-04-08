@@ -32,7 +32,8 @@ double IR_weights[6] = {-3, -2, -1, 1, 2, 3};//{-5000, -2000, -1000, 1000, 2000,
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
 int speed_adjust = 0;
-int MotorBase_speed = 70;  //60
+int Left_MotorBase_speed = 70;  //60
+int Right_MotorBase_speed = 70;
 int max_speed = 70;
 int min_speed = 40 ;
 
@@ -41,6 +42,7 @@ float Kd = 0; // 8
 float Ki = 0;
 
 float P, I, D;
+I = 0;   // I is again and again set to zero in pid_forward()
 
 float error = 0;
 float previousError = 0; //46
@@ -48,12 +50,17 @@ float previousError = 0; //46
 int stage = 0;
 
 void forward();
+void pid_forward(int steps);
 void backword();
+void pid_backward(int steps);
 void turn_left();
-void turn_right();
+void turn_right(); // after turn left or turn right functions you need to specify the delay and then stop
+void turn_left_90();
+void turn_right_90();
+void turn_left_180();
 void stop();
 void motor_speed();
-void read_sensors();
+void read_ir();
 void line_follow();
 void measure_distance();
 int read_color_sensor();
@@ -115,6 +122,23 @@ void forward()
     digitalWrite(IN2, LOW);
     digitalWrite(IN3, HIGH);
     digitalWrite(IN4, LOW);
+    LMotorSpeed = Left_MotorBase_speed;
+    RMotorSpeed = Right_MotorBase_speed;
+    motor_speed();
+}
+
+void pid_forward(int count) {
+    I = 0;
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+    for (int i = 0; i < count; i++) {
+        read_ir();
+        line_follow();
+        delay(2);
+    }
+    stop();
 }
 
 void backword()
@@ -123,6 +147,23 @@ void backword()
     digitalWrite(IN2, HIGH);
     digitalWrite(IN3, LOW);
     digitalWrite(IN4, HIGH);
+    LMotorSpeed = Left_MotorBase_speed;
+    RMotorSpeed = Right_MotorBase_speed;
+    motor_speed();
+}
+
+void pid_backword(int count) {
+    I = 0;
+    digitalWrite(IN1, LOW);
+    digitalWrite(IN2, HIGH);
+    digitalWrite(IN3, LOW);
+    digitalWrite(IN4, HIGH);
+    for (int i = 0; i < count; i++) {
+        read_ir();
+        line_follow();
+        delay(2);
+    }
+    stop();
 }
 
 void turn_left()
@@ -131,6 +172,9 @@ void turn_left()
     digitalWrite(IN2, HIGH);
     digitalWrite(IN3, HIGH);
     digitalWrite(IN4, LOW);
+    LMotorSpeed = Left_MotorBase_speed;
+    RMotorSpeed = Right_MotorBase_speed;
+    motor_speed();
 }
 
 void turn_right()
@@ -139,6 +183,9 @@ void turn_right()
     digitalWrite(IN2, LOW);
     digitalWrite(IN3, LOW);
     digitalWrite(IN4, HIGH);
+    LMotorSpeed = Left_MotorBase_speed;
+    RMotorSpeed = Right_MotorBase_speed;
+    motor_speed();
 }
 
 void stop()
@@ -162,23 +209,41 @@ void motor_speed()
     analogWrite(IN_Speed_Right, RMotorSpeed);
 }
 
-void read_sensors()
+void read_ir()
 {
-  IR_val[0] = analogRead(IR1);
-  IR_val[1] = analogRead(IR2);
-  IR_val[2] = analogRead(IR3);
-  IR_val[3] = analogRead(IR4);
-  IR_val[4] = analogRead(IR5);
-  IR_val[5] = analogRead(IR6);
-//
-  for (int i = 0; i < 10; i++)
-   {
-     Serial.print(IR_val[i]);
-     Serial.print(" ");
-   }
-   Serial.println(" ");
+//   IR_val[0] = analogRead(IR1);
+//   IR_val[1] = analogRead(IR2);
+//   IR_val[2] = analogRead(IR3);
+//   IR_val[3] = analogRead(IR4);
+//   IR_val[4] = analogRead(IR5);
+//   IR_val[5] = analogRead(IR6);
+// //
+//   for (int i = 0; i < 6; i++)
+//    {
+//      Serial.print(IR_val[i]);
+//      Serial.print(" ");
+//    }
+//    Serial.println(" ");
 
-    for (int i = 0; i < 10; i++)
+       for (int i = 0; i < 6; i++)
+    {
+        IR_val[i]=0;
+    }
+       for (int i = 0; i <3 ; i++)
+    {   
+        IR_val[0] += analogRead(IR1);
+        IR_val[1] += analogRead(IR2);
+        IR_val[2] += analogRead(IR3);
+        IR_val[3] += analogRead(IR4);
+        IR_val[4] += analogRead(IR5);
+        IR_val[5] += analogRead(IR6);
+    }
+        for (int i = 0; i < 6; i++)
+    {
+        IR_val[i]=IR_val[i]/3;
+    }
+
+    for (int i = 0; i < 6; i++)
    {
      if (IR_val[i] >= Threshold)
      {
@@ -213,8 +278,8 @@ void line_follow()
     previousError = error;
 
     speed_adjust = Kp * P + Ki * I + Kd * D;
-    LMotorSpeed = MotorBase_speed - speed_adjust;
-    RMotorSpeed = MotorBase_speed + speed_adjust;
+    LMotorSpeed = Left_MotorBase_speed - speed_adjust;
+    RMotorSpeed = Right_MotorBase_speed + speed_adjust;
 
     if (LMotorSpeed < min_speed)
         {
