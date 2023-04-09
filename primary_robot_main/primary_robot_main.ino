@@ -196,7 +196,7 @@ void turn_left_90()
         RMotorSpeed = Right_MotorBase_speed;
         motor_speed();
         read_IR();
-    } while (!(IR_val[2] == 0 & IR_val[3] == 0));
+    } while (!(IR_val[3] == 0 & IR_val[4] == 0));
         stop();
 }
 
@@ -214,7 +214,7 @@ void turn_right_90()
         RMotorSpeed = turnspeed;
         motor_speed();
         read_ir();
-    } while (!(IR_val[2] == 1 & IR_val[3] == 1));
+    } while (!(IR_val[3] == 0 & IR_val[4] == 0));
     stop();
 }
 
@@ -232,7 +232,7 @@ void turn_left_180()
         RMotorSpeed = Right_MotorBase_speed;
         motor_speed();
         read_IR();
-    } while (!(IR_val[2] == 0 & IR_val[3] == 0));
+    } while (!(IR_val[3] == 0 && IR_val[4] == 0));
         stop();   
 }
 
@@ -356,4 +356,36 @@ int measure_distance()
     int duration = ultrasonic.ping_median(); // sends out 5 pulses and takes the median duration
     int distance = ultrasonic.convert_in(duration)*2.54  // distance in centimeters
     return distance;
+}
+
+void start_to_checkpoint1()
+{
+  bool check = false;
+  while (stage == 0 && IR_val[0] == 0 && IR_val[1] == 0 && IR_val[2] == 0 && IR_val[3] == 0 && IR_val[4] == 0 && IR_val[5] == 0 && IR_val[6] == 0 && IR_val[7] == 0 && check) {
+    read_ir();
+    if ((IR_val[0] == 0 && IR_val[1] == 0 && IR_val[2] == 0) && (IR_val[5] == 1 && IR_val[6] == 1 && IR_val[7] == 1)) {
+      check = true;
+      Serial.println("We are at a left Junction");
+      pid_forward(100);  // will have to change the # steps
+      Serial.println("Turning left");
+      turn_left_90();
+    } 
+    else if ((IR_val[0] == 1 && IR_val[1] == 1 && IR_val[2] == 1) && (IR_val[5] == 0 && IR_val[6] == 0 && IR_val[7] == 0)){
+      Serial.println("We are at a right junction");
+      pid_forward(100);
+      Serial.println("Turning right");
+      turn_left_90();
+    }
+    else if (IR_val[0] == 1 && IR_val[1] == 1 && IR_val[2] == 1 && IR_val[3] == 1 && IR_val[4] == 1 && IR_val[5] == 1 && IR_val[6] == 1 && IR_val[7] == 1){
+      Serial.println("We are at a dead end");
+      turn_left_180();
+    } else {
+      Serial.println("Moving Forward");
+      line_follow();
+      //pid_forward(15);
+    }
+  }
+  else{
+    stage += 1;
+  }
 }
