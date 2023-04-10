@@ -64,7 +64,7 @@ void stop();
 void motor_speed();
 void read_ir();
 void line_follow();
-void measure_distance();
+int measure_distance();
 int read_color_sensor();
 int read_bluetooth_value();
 void send_bluetooth_value(int value);

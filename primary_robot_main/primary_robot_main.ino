@@ -1,4 +1,6 @@
 #include <NewPing.h>  // imports the NewPing library for ultrasonic sensor
+#include <LiquidCrystal_I2C.h>
+
 
 // sensors
 #define IR1 A0
@@ -15,6 +17,7 @@
 //#define RGB
 
 NewPing ultrasonic(trig, echo); //defines a new ultrasonic variable
+LiquidCrystal_I2C lcd(0x3F, 16, 2); // I2C address 0x27, 16 column and 2 rows
 
 // Motor A connections
 int ENA = 9;
@@ -43,8 +46,8 @@ float Kp = 0;  // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is 
 float Kd = 0; // 8
 float Ki = 0;
 
-float P, I, D;
-I = 0;   // I is again and again set to zero in pid_forward()
+float P, D;
+float I = 0;   // I is again and again set to zero in pid_forward()
 
 float error = 0;
 float previousError = 0; //46
@@ -66,7 +69,7 @@ void stop();
 void motor_speed();
 void read_ir();
 void line_follow();
-void measure_distance();
+int measure_distance();
 int read_color_sensor();
 int read_bluetooth_value();
 void send_bluetooth_value(int value);
@@ -74,6 +77,10 @@ void send_bluetooth_value(int value);
 void setup()
 {
   Serial.begin(9600);
+
+  lcd.init(); // initialize the lcd
+  lcd.backlight();
+
 
 	// Set all the motor control pins to outputs
 	pinMode(ENA, OUTPUT);
@@ -91,7 +98,11 @@ void setup()
 
 void loop()
 {
-
+  //forward();
+  //delay(1000);
+  backword();
+  // read_ir();
+  // delay(1000);
 }
 
 void set_forward()
@@ -195,7 +206,7 @@ void turn_left_90()
         LMotorSpeed = Left_MotorBase_speed;
         RMotorSpeed = Right_MotorBase_speed;
         motor_speed();
-        read_IR();
+        read_ir();
     } while (!(IR_val[3] == 0 & IR_val[4] == 0));
         stop();
 }
@@ -210,8 +221,8 @@ void turn_right_90()
     digitalWrite(IN3, LOW);
     digitalWrite(IN4, HIGH);
     do {
-        LMotorSpeed = turnspeed;
-        RMotorSpeed = turnspeed;
+        LMotorSpeed = Left_MotorBase_speed;
+        RMotorSpeed = Right_MotorBase_speed;
         motor_speed();
         read_ir();
     } while (!(IR_val[3] == 0 & IR_val[4] == 0));
@@ -231,7 +242,7 @@ void turn_left_180()
         LMotorSpeed = Left_MotorBase_speed;
         RMotorSpeed = Right_MotorBase_speed;
         motor_speed();
-        read_IR();
+        read_ir();
     } while (!(IR_val[3] == 0 && IR_val[4] == 0));
         stop();   
 }
@@ -253,8 +264,8 @@ void motor_speed()
     Serial.print("Right Speed: ");
     Serial.println(RMotorSpeed);
     
-    analogWrite(IN_Speed_Left, LMotorSpeed);
-    analogWrite(IN_Speed_Right, RMotorSpeed);
+    analogWrite(ENA, LMotorSpeed);
+    analogWrite(ENB, RMotorSpeed);
 }
 
 void read_ir()
@@ -294,23 +305,31 @@ void read_ir()
     }
 
     for (int i = 0; i < 8; i++)
-   {
-     if (IR_val[i] >= Threshold)
-     {
-       IR_Bin_val[i] = 0;       //change for white strips on black surface
-     }
-     else
-     {
-       IR_Bin_val[i] = 1;
-     }
-   }
+    {
+      if (IR_val[i] >= Threshold)
+      {
+        IR_Bin_val[i] = 0;       //change for white strips on black surface
+      }
+      else
+      {
+        IR_Bin_val[i] = 1;
+      }
+    }
 
-     for (int i = 0; i < 8; i++)
-   {
-     Serial.print(IR_val[i]);
-     Serial.print(" ");
-   }
-   Serial.println(" ");
+  //    for (int i = 0; i < 8; i++)
+  //  {
+  //    Serial.print(IR_val[i]);
+  //    Serial.print(" ");
+  //  }
+  //  Serial.println(" ");
+    lcd.clear(); 
+    lcd.setCursor(0, 0);  
+    for (int i = 0; i < 8; i++)
+    {     
+      lcd.print(IR_val[i]);
+      lcd.print(" ");   
+    }
+
 
 }
 
@@ -348,41 +367,61 @@ void line_follow()
         RMotorSpeed = max_speed;
         }
     
-    motorSpeed();
+    motor_speed();
 }
 
 int measure_distance()
 {
     int duration = ultrasonic.ping_median(); // sends out 5 pulses and takes the median duration
-    int distance = ultrasonic.convert_in(duration)*2.54  // distance in centimeters
+    int distance = ultrasonic.convert_in(duration)*2.54;  // distance in centimeters
     return distance;
 }
 
 void start_to_checkpoint1()
 {
-  bool check = false;
-  while (stage == 0 && IR_val[0] == 0 && IR_val[1] == 0 && IR_val[2] == 0 && IR_val[3] == 0 && IR_val[4] == 0 && IR_val[5] == 0 && IR_val[6] == 0 && IR_val[7] == 0 && check) {
-    read_ir();
-    if ((IR_val[0] == 0 && IR_val[1] == 0 && IR_val[2] == 0) && (IR_val[5] == 1 && IR_val[6] == 1 && IR_val[7] == 1)) {
-      check = true;
-      Serial.println("We are at a left Junction");
-      pid_forward(100);  // will have to change the # steps
-      Serial.println("Turning left");
-      turn_left_90();
-    } 
-    else if ((IR_val[0] == 1 && IR_val[1] == 1 && IR_val[2] == 1) && (IR_val[5] == 0 && IR_val[6] == 0 && IR_val[7] == 0)){
-      Serial.println("We are at a right junction");
-      pid_forward(100);
-      Serial.println("Turning right");
-      turn_left_90();
-    }
-    else if (IR_val[0] == 1 && IR_val[1] == 1 && IR_val[2] == 1 && IR_val[3] == 1 && IR_val[4] == 1 && IR_val[5] == 1 && IR_val[6] == 1 && IR_val[7] == 1){
-      Serial.println("We are at a dead end");
-      turn_left_180();
-    } else {
-      Serial.println("Moving Forward");
-      line_follow();
-      //pid_forward(15);
+  if (stage==0){
+    bool check = false;
+    while (IR_val[0] == 0 && IR_val[1] == 0 && IR_val[2] == 0 && IR_val[3] == 0 && IR_val[4] == 0 && IR_val[5] == 0 && IR_val[6] == 0 && IR_val[7] == 0 && check) {
+      read_ir();
+      if ((IR_val[0] == 0 && IR_val[1] == 0 && IR_val[2] == 0) && (IR_val[5] == 1 && IR_val[6] == 1 && IR_val[7] == 1)) {
+        check = true;
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Left Junction");
+        //Serial.println("We are at a left Junction");
+        pid_forward(100);  // will have to change the # steps
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Turning left");
+        //Serial.println("Turning left");
+        turn_left_90();
+      } 
+      else if ((IR_val[0] == 1 && IR_val[1] == 1 && IR_val[2] == 1) && (IR_val[5] == 0 && IR_val[6] == 0 && IR_val[7] == 0)){
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Right Junction");
+        //Serial.println("We are at a right junction");
+        pid_forward(100);
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Turning right");
+        //Serial.println("Turning right");
+        turn_left_90();
+      }
+      else if (IR_val[0] == 1 && IR_val[1] == 1 && IR_val[2] == 1 && IR_val[3] == 1 && IR_val[4] == 1 && IR_val[5] == 1 && IR_val[6] == 1 && IR_val[7] == 1){
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Dead end");
+        //Serial.println("We are at a dead end");
+        turn_left_180();
+      } else {
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Moving Forward");
+        //Serial.println("Moving Forward");
+        line_follow();
+        //pid_forward(15);
+      }
     }
   }
   else{
