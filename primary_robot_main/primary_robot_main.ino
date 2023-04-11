@@ -87,11 +87,17 @@ int read_bluetooth_value();
 void send_bluetooth_value(int value);
 void start_to_checkpoint1();
 void checkpoint1();
-void checkpoint_follow();
-void lower_gate();
 void checkpoint1_to_dotted_line();
 void dotted_line_to_checkpoint2();
-
+void checkpoint2_to_L_junction();
+void L_junction_to_box_pickup();
+void box_pickup_to_unload();
+void unload_to_T_junction();
+void T_junction_to_finish();
+void checkpoint_follow();
+void lower_gate();
+void arm_down();
+void arm_up();
 
 void setup()
 {
@@ -114,7 +120,7 @@ void setup()
 
   pinMode(ENCA_left, INPUT);
   pinMode(ENCB_left, INPUT);
-  attachInterrupt(digitalPinToInterrupt(ENCA),read_encoders,RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCA), read_encoders, RISING);
 	
 	// Turn off motors - Initial state
     //stop();
@@ -639,5 +645,3 @@ void lower_gate()
 {
 
 }
-
-void 
