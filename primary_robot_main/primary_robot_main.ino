@@ -12,47 +12,57 @@
 #define IR7 A6
 #define IR8 A7
 
+//Sonar
 #define trig 10
 #define echo 11
+
 //#define RGB
+
+//Encoder
+#define ENCA_left 2
+#define ENCB_left 3
 
 NewPing ultrasonic(trig, echo); //defines a new ultrasonic variable
 LiquidCrystal_I2C lcd(0x3F, 16, 2); // I2C address 0x27, 16 column and 2 rows
 
-// Motor A connections
-int ENA = 9;
-int IN1 = 8;
-int IN2 = 7;
-// Motor B connections
-int ENB = 3;
-int IN3 = 5;
-int IN4 = 4;
+// Right Motor connections
+int EN_right = 9;
+int IN4 = 8;
+int IN3 = 7;
+// Left Motor connections
+int EN_left = 3;
+int IN2 = 5;
+int IN1 = 4;
 
 
 int Threshold = 100;
 int IR_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
 int IR_Bin_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-double IR_weights[8] = {-4, -3, -2, -1, 1, 2, 3, 4};//{-5000, -2000, -1000, 1000, 2000, 5000}; //{-4000, -2000, -1000, 1000, 2000, 4000};  //{-32, -16, -8, -4, -2, 0, 2, 4, 8, 16, 32}
+double IR_weights[8] = {-32, -8, -4, -2, 2, 4, 8, 32};//{-5000, -2000, -1000, 1000, 2000, 5000}; //{-4000, -2000, -1000, 1000, 2000, 4000};  //{-32, -16, -8, -4, -2, 0, 2, 4, 8, 16, 32}
 
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
 int speed_adjust = 0;
-int Left_MotorBase_speed = 70;  //60
-int Right_MotorBase_speed = 70;
-int max_speed = 70;
-int min_speed = 40 ;
+int Left_MotorBase_speed = 100; // base 110
+int Right_MotorBase_speed = 100;   // limit 80   // base 90
+int max_speed = 130;
+int min_speed = 80;
 
-float Kp = 0;  // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
-float Kd = 0; // 8
+float Kp = 0.05; //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
+float Kd = 18; // 85
 float Ki = 0;
 
 float P, D;
 float I = 0;   // I is again and again set to zero in pid_forward()
 
+int ir_to_wheels_dist = 75;
+int encoder_pos = 0;
 float error = 0;
 float previousError = 0; //46
 
 int stage = 0;
+
+long current_time;
 
 void set_forward();
 void forward();  // sets forward and go forward
@@ -68,41 +78,58 @@ void turn_left_180();
 void stop();
 void motor_speed();
 void read_ir();
+void display_ir();
+void read_encoders();
 void line_follow();
 int measure_distance();
 int read_color_sensor();
 int read_bluetooth_value();
 void send_bluetooth_value(int value);
+void start_to_checkpoint1();
+void checkpoint1();
+void checkpoint_follow();
+void lower_gate();
+void checkpoint1_to_dotted_line();
+void dotted_line_to_checkpoint2();
+
 
 void setup()
 {
   Serial.begin(9600);
 
-  lcd.init(); // initialize the lcd
+  // initialize the lcd
+  lcd.init();
   lcd.backlight();
 
 
 	// Set all the motor control pins to outputs
-	pinMode(ENA, OUTPUT);
-	pinMode(ENB, OUTPUT);
+	pinMode(EN_right, OUTPUT);
+	pinMode(EN_left, OUTPUT);
 	pinMode(IN1, OUTPUT);
 	pinMode(IN2, OUTPUT);
 	pinMode(IN3, OUTPUT);
 	pinMode(IN4, OUTPUT);
   pinMode(trig, OUTPUT);
   pinMode(echo, INPUT);
+
+  pinMode(ENCA_left, INPUT);
+  pinMode(ENCB_left, INPUT);
+  attachInterrupt(digitalPinToInterrupt(ENCA),read_encoders,RISING);
 	
 	// Turn off motors - Initial state
-    stop();
+    //stop();
+  set_forward();
+  current_time = millis();
 }
 
 void loop()
 {
-  //forward();
-  //delay(1000);
-  backword();
-  // read_ir();
-  // delay(1000);
+  if((millis()-current_time)>1000){
+    //read_ir();
+    display_ir();
+    current_time = millis();
+  }
+  start_to_checkpoint1();
 }
 
 void set_forward()
@@ -130,6 +157,8 @@ void pid_forward(int count) {
     digitalWrite(IN2, LOW);
     digitalWrite(IN3, HIGH);
     digitalWrite(IN4, LOW);
+    //encoder_pos = 0;
+    // while (encoder_pos < target){do this}
     for (int i = 0; i < count; i++) {
         read_ir();
         line_follow();
@@ -195,20 +224,24 @@ void turn_right()
 
 void turn_left_90()
 {
-    turn_left();
-    delay(500);  // will have to change the delay
-    stop();
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, HIGH);
-    digitalWrite(IN3, HIGH);
-    digitalWrite(IN4, LOW);
-    do {
-        LMotorSpeed = Left_MotorBase_speed;
-        RMotorSpeed = Right_MotorBase_speed;
-        motor_speed();
-        read_ir();
-    } while (!(IR_val[3] == 0 & IR_val[4] == 0));
-        stop();
+  encoder_pos = 0;
+  turn_left();
+  delay(1000);  // will have to change the delay
+  //stop();
+  // digitalWrite(IN1, LOW);
+  // digitalWrite(IN2, HIGH);
+  // digitalWrite(IN3, HIGH);
+  // digitalWrite(IN4, LOW);
+  do {
+      LMotorSpeed = Left_MotorBase_speed;
+      RMotorSpeed = Right_MotorBase_speed;
+      motor_speed();
+      read_ir();
+  } while (!(IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0));
+      stop();
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print(encoder_pos);
 }
 
 void turn_right_90()
@@ -225,7 +258,7 @@ void turn_right_90()
         RMotorSpeed = Right_MotorBase_speed;
         motor_speed();
         read_ir();
-    } while (!(IR_val[3] == 0 & IR_val[4] == 0));
+    } while (!(IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0));
     stop();
 }
 
@@ -243,7 +276,7 @@ void turn_left_180()
         RMotorSpeed = Right_MotorBase_speed;
         motor_speed();
         read_ir();
-    } while (!(IR_val[3] == 0 && IR_val[4] == 0));
+    } while (!(IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0));
         stop();   
 }
 
@@ -258,14 +291,14 @@ void stop()
 void motor_speed()
 {
     
-    Serial.print("Left Speed: ");
+    /*Serial.print("Left Speed: ");
     Serial.println(LMotorSpeed);
 
     Serial.print("Right Speed: ");
-    Serial.println(RMotorSpeed);
+    Serial.println(RMotorSpeed); */
     
-    analogWrite(ENA, LMotorSpeed);
-    analogWrite(ENB, RMotorSpeed);
+    analogWrite(EN_left, LMotorSpeed);
+    analogWrite(EN_right, RMotorSpeed);
 }
 
 void read_ir()
@@ -308,33 +341,68 @@ void read_ir()
     {
       if (IR_val[i] >= Threshold)
       {
-        IR_Bin_val[i] = 0;       //change for white strips on black surface
+        IR_Bin_val[i] = 1;       //change for white strips on black surface
       }
       else
       {
-        IR_Bin_val[i] = 1;
+        IR_Bin_val[i] = 0;
       }
     }
 
-  //    for (int i = 0; i < 8; i++)
-  //  {
-  //    Serial.print(IR_val[i]);
-  //    Serial.print(" ");
-  //  }
-  //  Serial.println(" ");
-    lcd.clear(); 
-    lcd.setCursor(0, 0);  
-    for (int i = 0; i < 8; i++)
-    {     
-      lcd.print(IR_val[i]);
-      lcd.print(" ");   
+    /*  for (int i = 0; i < 8; i++)
+    {
+      Serial.print(IR_val[i]);
+      Serial.print(" ");
     }
+    Serial.println(" "); */
+//    lcd.clear(); 
+//    lcd.setCursor(0, 0);  
+//    for (int i = 0; i < 4; i++)
+//    {     
+//      lcd.print(IR_val[i]);
+//      lcd.print(" ");   
+//    }
+//    lcd.setCursor(0, 1);
+//    for (int i = 4; i < 8; i++)
+//    {     
+//      lcd.print(IR_val[i]);
+//      lcd.print(" ");   
+//    }
 
 
 }
 
+void display_ir()
+{
+    lcd.clear(); 
+    lcd.setCursor(0, 0);  
+    for (int i = 0; i < 4; i++)
+    {     
+      lcd.print(IR_val[i]);
+      lcd.print(" ");   
+    }
+    lcd.setCursor(0, 1);
+    for (int i = 4; i < 8; i++)
+    {     
+      lcd.print(IR_val[i]);
+      lcd.print(" ");   
+    }
+}
+
+void read_encoders()
+{
+  int b = digitalRead(ENCB);
+  if (b>0){
+    encoder_pos++;
+  }
+  else {
+    encoder_pos--;
+  }
+}
+
 void line_follow()
 {
+    read_ir();
     for (int i = 0; i < 8; i++)
         {
         error += IR_weights[i] * IR_Bin_val[i];  //IR_Bin_val
@@ -377,6 +445,95 @@ int measure_distance()
     return distance;
 }
 
+int read_color_sensor()
+{
+
+}
+
+int read_bluetooth_value()
+{
+
+}
+
+void send_bluetooth_value(int value)
+{
+
+}
+
+void start_to_checkpoint1()
+{
+  if (stage==0){
+    current_time = millis();
+    while (true) {
+      read_ir();
+      if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Left Junction");
+        //Serial.println("We are at a left Junction");
+        stop();
+        delay(1000);
+        pid_forward(ir_to_wheels_dist);  // will have to change the # steps
+//        lcd.clear(); 
+//        lcd.setCursor(0, 0);
+//        lcd.print("Turning left");
+//        //Serial.println("Turning left");
+        stop();
+        delay(1000);
+        turn_left_90();
+      } 
+      else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Right Junction");
+        //Serial.println("We are at a right junction");
+        pid_forward(ir_to_wheels_dist);
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Turning right");
+        //Serial.println("Turning right");
+        turn_right_90();
+      }
+      else if(IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0){
+        pid_forward(ir_to_wheels_dist);
+        if (IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0){
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Stage 1 completed!");
+          stage+=1;
+          break;
+        }
+        else{
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Turning left");
+          turn_left_90();
+        }
+      }
+      else if (IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1 && IR_Bin_val[3] == 1 && IR_Bin_val[4] == 1 && IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1){
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Dead end");
+        //Serial.println("We are at a dead end");
+        turn_left_180();
+      } 
+      else {
+        if ((millis() - current_time) > 1000){
+          lcd.clear(); 
+          lcd.setCursor(0, 0);
+          lcd.print("Moving Forward");
+        }
+        //Serial.println("Moving Forward");
+        set_forward();
+        line_follow();
+        //pid_forward(15);
+      }
+    }
+  }
+}
+
+
+/*
 void start_to_checkpoint1()
 {
   if (stage==0){
@@ -428,3 +585,59 @@ void start_to_checkpoint1()
     stage += 1;
   }
 }
+*/
+
+void checkpoint1(){
+  if (stage == 1)
+  {
+    pid_forward(ir_to_wheels_dist);
+    turn_right_90();
+    while (!(IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1))
+    {
+      checkpoint_follow();
+    }
+    pid_forward(ir_to_wheels_dist);
+    turn_left_90();
+    while (!(IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
+    {
+      checkpoint_follow();
+    }
+    pid_forward(ir_to_wheels_dist);
+    turn_left_90();
+    pid_backward(3*ir_to_wheels_dist);
+    //lower_gate();
+    //send_bluetooth_value(1);
+    //wait untill the smaller robot gets off
+
+    pid_forward(2*ir_to_wheels_dist);
+    turn_right_90();
+
+    while (!(IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1))
+    {
+      checkpoint_follow();
+    }
+    pid_forward(ir_to_wheels_dist);
+    turn_left_90();
+
+    while (!(IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
+    {
+      checkpoint_follow();
+    }
+    pid_forward(ir_to_wheels_dist);
+    turn_right_90();
+    stage+=1;
+    
+  }
+}
+
+void checkpoint_follow()
+{
+
+}
+
+void lower_gate()
+{
+
+}
+
+void 
