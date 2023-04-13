@@ -1,6 +1,8 @@
 #include <NewPing.h>  // imports the NewPing library for ultrasonic sensor
 #include <LiquidCrystal_I2C.h>
-
+#include <SPI.h>    // import the relevent library for SPI communication
+#include <nRF24L01.h>  // import the library for radio module
+#include <RF24.h>
 
 // sensors
 #define IR1 A0
@@ -17,6 +19,11 @@
 #define echo 11
 
 //#define RGB
+#define S0 4
+#define S1 5
+#define S2 6
+#define S3 7
+#define sensorOut 8
 
 //Encoder
 #define ENCA_left 2
@@ -24,6 +31,8 @@
 
 NewPing ultrasonic(trig, echo); //defines a new ultrasonic variable
 LiquidCrystal_I2C lcd(0x3F, 16, 2); // I2C address 0x27, 16 column and 2 rows
+RF24 radio(7, 8);  //defines a new radio variable CE, CSN respectively
+
 
 // Right Motor connections
 int EN_right = 9;
@@ -48,6 +57,11 @@ int Right_MotorBase_speed = 100;   // limit 80   // base 90
 int max_speed = 130;
 int min_speed = 80;
 
+// color sensor readings
+int redfrequency = 0;
+int greenfrequency = 0;
+int bluefrequency = 0;
+
 float Kp = 0.05; //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
 float Kd = 18; // 85
 float Ki = 0;
@@ -61,6 +75,8 @@ float error = 0;
 float previousError = 0; //46
 
 int stage = 0;
+const byte address[6] = "00001"; //the address to which the module should listen for incoming messages
+
 
 long current_time;
 
@@ -83,8 +99,7 @@ void read_encoders();
 void line_follow();
 int measure_distance();
 int read_color_sensor();
-int read_bluetooth_value();
-void send_bluetooth_value(int value);
+int read_color_value();
 void start_to_checkpoint1();
 void checkpoint1();
 void checkpoint1_to_dotted_line();
@@ -122,6 +137,24 @@ void setup()
   pinMode(ENCB_left, INPUT);
   attachInterrupt(digitalPinToInterrupt(ENCA), read_encoders, RISING);
 	
+  // Set all the color sensor pin configurations
+  pinMode(S0, OUTPUT);
+  pinMode(S1, OUTPUT);
+  pinMode(S2, OUTPUT);
+  pinMode(S3, OUTPUT);
+  pinMode(sensorOut, INPUT);
+
+  // Setting its frequency-scaling to 20%
+  digitalWrite(S0,LOW);
+  digitalWrite(S1,HIGH);
+  
+  //Setup the radio module
+  radio.begin();
+  radio.openReadingPipe(0, address);
+  radio.setPALevel(RF24_PA_MAX);
+  radio.setDataRate(RF24_250KBPS);
+  radio.startListening();
+
 	// Turn off motors - Initial state
     //stop();
   set_forward();
@@ -453,17 +486,57 @@ int measure_distance()
 
 int read_color_sensor()
 {
+  int i=0;
+  int R_val=0,G_val=0,B_val=0,O_val =0;
+  do
+  {
+    digitalWrite(S2,LOW);
+    digitalWrite(S3,LOW);
+    redfrequency = pulseIn(sensorOut, LOW);
+     
+    digitalWrite(S2,HIGH);
+    digitalWrite(S3,HIGH);
+    greenfrequency = pulseIn(sensorOut, LOW);
+  
+    digitalWrite(S2,LOW);
+    digitalWrite(S3,HIGH);
+    bluefrequency = pulseIn(sensorOut, LOW);
+  
+    if (redfrequency>250 && redfrequency <289) R_val++;
+    else if (greenfrequency>260 && greenfrequency <300) G_val++;
+    else if (bluefrequency>310 && bluefrequency <350) B_val++;
+    else O_val++;
+    i++;
+  }
+  while (i<50);
 
+    if(R_val>40) return 1;
+    else if (G_val>40) return 2;
+    else if (B_val>40) return 3;
+    else return 4;
 }
 
-int read_bluetooth_value()
+int read_color_value()
 {
+  int R_val=0,G_val=0,B_val=0,O_val=0;
+  for (int i=0;i<5;i++)
+  {
+     if (radio.available())
+      {
+        int text;
+        radio.read(&text, sizeof(text));
+        if (text==1) R_val++;
+        else if (text==2) G_val++;
+        else if (text==3) B_val++;
+        else O_val++; 
+      }
+      delay(200);
+  }
 
-}
-
-void send_bluetooth_value(int value)
-{
-
+  if (R_val>=3) return 1;
+  else if (G_val>=3) return 2;
+  else if (B_val>=3) return 3;
+  else return 4;
 }
 
 void start_to_checkpoint1()
