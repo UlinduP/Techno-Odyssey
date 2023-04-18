@@ -26,8 +26,8 @@
 #define sensorOut 8
 
 //Encoder
-#define ENCA_left 2
-#define ENCB_left 3
+#define ENCA_left 53
+#define ENCB_left 51
 
 NewPing ultrasonic(trig, echo); //defines a new ultrasonic variable
 LiquidCrystal_I2C lcd(0x3F, 16, 2); // I2C address 0x27, 16 column and 2 rows
@@ -52,8 +52,8 @@ double IR_weights[8] = {-32, -8, -4, -2, 2, 4, 8, 32};//{-5000, -2000, -1000, 10
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
 int speed_adjust = 0;
-int Left_MotorBase_speed = 100; // base 110
-int Right_MotorBase_speed = 100;   // limit 80   // base 90
+int Left_MotorBase_speed = 110; // base 110
+int Right_MotorBase_speed = 90;   // limit 80   // base 90
 int max_speed = 130;
 int min_speed = 80;
 
@@ -69,10 +69,13 @@ float Ki = 0;
 float P, D;
 float I = 0;   // I is again and again set to zero in pid_forward()
 
-int ir_to_wheels_dist = 75;
-int encoder_pos = 0;
+int ir_to_wheels_dist = -164;  // encoder value 
 float error = 0;
 float previousError = 0; //46
+
+int counter = 0; 
+int aState;
+int aLastState; 
 
 int stage = 0;
 const byte address[6] = "00001"; //the address to which the module should listen for incoming messages
@@ -135,7 +138,6 @@ void setup()
 
   pinMode(ENCA_left, INPUT);
   pinMode(ENCB_left, INPUT);
-  attachInterrupt(digitalPinToInterrupt(ENCA), read_encoders, RISING);
 	
   // Set all the color sensor pin configurations
   pinMode(S0, OUTPUT);
@@ -157,6 +159,9 @@ void setup()
 
 	// Turn off motors - Initial state
     //stop();
+
+  // Reads the initial state of the outputA
+  aLastState = digitalRead(ENCA_left);
   set_forward();
   current_time = millis();
 }
@@ -164,10 +169,13 @@ void setup()
 void loop()
 {
   if((millis()-current_time)>1000){
-    //read_ir();
+    lcd.clear();
+    lcd.setCursor(0,0);
+    read_ir();
     display_ir();
+//    lcd.print(counter);
     current_time = millis();
-  }
+  } 
   start_to_checkpoint1();
 }
 
@@ -198,12 +206,13 @@ void pid_forward(int count) {
     digitalWrite(IN4, LOW);
     //encoder_pos = 0;
     // while (encoder_pos < target){do this}
-    for (int i = 0; i < count; i++) {
-        read_ir();
-        line_follow();
-        delay(2);
+    for (int i=0;i<count;i++){
+      read_ir();
+      line_follow();
+      //delay(2);
     }
     stop();
+    delay(2);
 }
 
 void set_backword()
@@ -263,7 +272,8 @@ void turn_right()
 
 void turn_left_90()
 {
-  encoder_pos = 0;
+  //-83, -51, -127, 13,-108, -94,   Encoder values
+  //counter = 0;
   turn_left();
   delay(1000);  // will have to change the delay
   //stop();
@@ -272,26 +282,24 @@ void turn_left_90()
   // digitalWrite(IN3, HIGH);
   // digitalWrite(IN4, LOW);
   do {
-      LMotorSpeed = Left_MotorBase_speed;
-      RMotorSpeed = Right_MotorBase_speed;
-      motor_speed();
-      read_ir();
+    LMotorSpeed = Left_MotorBase_speed;
+    RMotorSpeed = Right_MotorBase_speed;
+    motor_speed();
+    read_ir();
   } while (!(IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0));
       stop();
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print(encoder_pos);
+      delay(2);
 }
 
 void turn_right_90()
 {
     turn_right();
-    delay(500);
-    stop();
-    digitalWrite(IN1, HIGH);
-    digitalWrite(IN2, LOW);
-    digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
+    delay(1000);
+//    stop();
+//    digitalWrite(IN1, HIGH);
+//    digitalWrite(IN2, LOW);
+//    digitalWrite(IN3, LOW);
+//    digitalWrite(IN4, HIGH);
     do {
         LMotorSpeed = Left_MotorBase_speed;
         RMotorSpeed = Right_MotorBase_speed;
@@ -305,11 +313,11 @@ void turn_left_180()
 {
     turn_left();
     delay(1000);  // will have to change the delay
-    stop();
-    digitalWrite(IN1, LOW);
-    digitalWrite(IN2, HIGH);
-    digitalWrite(IN3, HIGH);
-    digitalWrite(IN4, LOW);
+//    stop();
+//    digitalWrite(IN1, LOW);
+//    digitalWrite(IN2, HIGH);
+//    digitalWrite(IN3, HIGH);
+//    digitalWrite(IN4, LOW);
     do {
         LMotorSpeed = Left_MotorBase_speed;
         RMotorSpeed = Right_MotorBase_speed;
@@ -430,13 +438,20 @@ void display_ir()
 
 void read_encoders()
 {
-  int b = digitalRead(ENCB);
-  if (b>0){
-    encoder_pos++;
-  }
-  else {
-    encoder_pos--;
-  }
+  aState = digitalRead(ENCA_left); // Reads the "current" state of the outputA
+   // If the previous and the current state of the outputA are different, that means a Pulse has occured
+  if (aState != aLastState){     
+     // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+    if (digitalRead(ENCB_left) != aState) { 
+      counter ++;
+    } else {
+      counter --;
+    }
+//    Serial.print("Position: ");
+//    Serial.println(counter);
+  } 
+  aLastState = aState; // Updates the previous state of the outputA with the current state
+  //return counter;
 }
 
 void line_follow()
@@ -551,14 +566,14 @@ void start_to_checkpoint1()
         lcd.print("Left Junction");
         //Serial.println("We are at a left Junction");
         stop();
-        delay(1000);
-        pid_forward(ir_to_wheels_dist);  // will have to change the # steps
-//        lcd.clear(); 
-//        lcd.setCursor(0, 0);
-//        lcd.print("Turning left");
-//        //Serial.println("Turning left");
+        delay(50);
+        pid_forward(100);  // will have to change the # steps
+        lcd.clear(); 
+        lcd.setCursor(0, 0);
+        lcd.print("Turning left");
+        //Serial.println("Turning left");
         stop();
-        delay(1000);
+        delay(50);
         turn_left_90();
       } 
       else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
@@ -566,7 +581,11 @@ void start_to_checkpoint1()
         lcd.setCursor(0, 0);
         lcd.print("Right Junction");
         //Serial.println("We are at a right junction");
-        pid_forward(ir_to_wheels_dist);
+        stop();
+        delay(50);
+        pid_forward(100);
+        stop();
+        delay(50);
         lcd.clear(); 
         lcd.setCursor(0, 0);
         lcd.print("Turning right");
@@ -574,7 +593,7 @@ void start_to_checkpoint1()
         turn_right_90();
       }
       else if(IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0){
-        pid_forward(ir_to_wheels_dist);
+        pid_forward(100);
         if (IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0){
           lcd.clear();
           lcd.setCursor(0, 0);
@@ -594,6 +613,8 @@ void start_to_checkpoint1()
         lcd.setCursor(0, 0);
         lcd.print("Dead end");
         //Serial.println("We are at a dead end");
+        stop();
+        delay(50);
         turn_left_180();
       } 
       else {
@@ -601,6 +622,7 @@ void start_to_checkpoint1()
           lcd.clear(); 
           lcd.setCursor(0, 0);
           lcd.print("Moving Forward");
+          current_time = millis();
         }
         //Serial.println("Moving Forward");
         set_forward();
