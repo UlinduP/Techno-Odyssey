@@ -74,7 +74,9 @@ void pid_backward(int steps);
 void turn_left();
 void turn_right(); // after turn left or turn right functions you need to specify the delay and then stop
 void turn_left_90();
+void turn_left_until_middle();
 void turn_right_90();
+void turn_right_until_middle();
 void turn_left_180();
 void stop();
 void motor_speed();
@@ -258,6 +260,27 @@ void turn_left_90()
         stop();
 }
 
+void turn_left_until_middle()
+{
+  //-83, -51, -127, 13,-108, -94,   Encoder values
+  //counter = 0;
+  turn_left();
+  //delay(1000);  // will have to change the delay
+  //stop();
+  // digitalWrite(IN1, LOW);
+  // digitalWrite(IN2, HIGH);
+  // digitalWrite(IN3, HIGH);
+  // digitalWrite(IN4, LOW);
+  do {
+    LMotorSpeed = Left_MotorBase_speed;
+    RMotorSpeed = Right_MotorBase_speed;
+    motor_speed();
+    read_ir();
+  } while (!(IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0));
+      stop();
+      delay(50);
+}
+
 void turn_right_90()
 {
     turn_right();
@@ -274,6 +297,25 @@ void turn_right_90()
         read_ir();
     } while (!(IR_val[2] == 1 & IR_val[3] == 1));
     stop();
+}
+
+void turn_right_until_middle()
+{
+    turn_right();
+//  delay(1000);
+//    stop();
+//    digitalWrite(IN1, HIGH);
+//    digitalWrite(IN2, LOW);
+//    digitalWrite(IN3, LOW);
+//    digitalWrite(IN4, HIGH);
+    do {
+        LMotorSpeed = Left_MotorBase_speed;
+        RMotorSpeed = Right_MotorBase_speed;
+        motor_speed();
+        read_ir();
+    } while (!(IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0));
+    stop();
+    delay(50);
 }
 
 void turn_left_180()
@@ -475,10 +517,58 @@ void gate_A_to_vault()
 {
     if (stage==1 && measure_distance()>20)
     {
-        forward();
-        while (!(IR_val[0]==0 && IR_val[1]==0 && IR_val[2]==0 && IR_val[3]==0 && IR_val[4]==0 && IR_val[5]==0))
+        int idx;
+        current_time = millis();
+        bool temp = false;
+        while (measure_distance() > 8)
         {
-            line_follow(); //may will have to modify here. (slow speeds, calibrate the departure angle etc.)
+        if ((IR_Bin_val[0] == 1 || IR_Bin_val[1] == 1 || IR_Bin_val[2] == 1 || IR_Bin_val[3] == 1 || IR_Bin_val[4] == 1 || IR_Bin_val[5] == 1) && temp)
+        {
+            for (int i=0;i<6;i++)
+            {
+                if (IR_Bin_val[i] == 1)
+                {
+                    idx = i;
+                }
+            }
+
+            if (idx > 3)
+            {
+                lcd.clear(); 
+                lcd.setCursor(0, 0);
+                lcd.print("Line on right");
+                stop();
+                delay(50);
+                turn_right_until_middle();
+            }
+
+            else if (idx < 3)
+            {
+                lcd.clear(); 
+                lcd.setCursor(0, 0);
+                lcd.print("Line on left");
+                stop();
+                delay(50);
+                turn_left_until_middle();
+            }
+            temp = false;
+        }
+        else if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0) && !temp)
+        {
+            temp = true;
+        }
+        else
+        {
+            if ((millis() - current_time) > 1000){
+            lcd.clear(); 
+            lcd.setCursor(0, 0);
+            lcd.print("Moving Forward");
+            current_time = millis();
+            }
+            //Serial.println("Moving Forward");
+            set_forward();
+            line_follow();
+        }
         }
          
         else
