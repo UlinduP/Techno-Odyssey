@@ -212,6 +212,7 @@ void setup()
 
   set_forward();
   current_time = millis();
+  turn_left_90_using_delay();
 }
 
 void loop()
@@ -224,7 +225,7 @@ void loop()
 //    lcd.print(counter);
     current_time = millis();
   } 
-  start_to_checkpoint1();
+  // start_to_checkpoint1();
   //line_follow();
 }
 
@@ -331,7 +332,7 @@ void turn_left_90()
   //-83, -51, -127, 13,-108, -94,   Encoder values
   //counter = 0;
   turn_left();
-  delay(1000);  // will have to change the delay
+  delay(500);  // will have to change the delay
   //stop();
   // digitalWrite(IN1, LOW);
   // digitalWrite(IN2, HIGH);
@@ -371,7 +372,7 @@ void turn_left_until_middle()
 void turn_right_90()
 {
     turn_right();
-    delay(1000);
+    delay(500);
 //    stop();
 //    digitalWrite(IN1, HIGH);
 //    digitalWrite(IN2, LOW);
@@ -708,7 +709,8 @@ void start_to_checkpoint1()
         turn_right_90();
       }
       else if(IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0){
-        pid_forward(100);
+        delay(50);
+        pid_forward(ir_to_wheels_dist);
         if (IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0){
           lcd.clear();
           lcd.setCursor(0, 0);
