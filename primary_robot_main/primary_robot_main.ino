@@ -1,4 +1,4 @@
-#include <NewPing.h>  // imports the NewPing library for ultrasonic sensor
+#include <NewPing.h>  // import the NewPing library for ultrasonic sensor
 #include <LiquidCrystal_I2C.h>
 #include <SPI.h>    // import the relevent library for SPI communication
 #include <nRF24L01.h>  // import the library for radio module
@@ -33,6 +33,23 @@
 #define S3 29
 #define sensorOut 30
 
+//keypad
+#define key1 A10
+#define key2 A11
+#define key3 A8
+#define key4 A9
+
+bool ks1 = false;
+bool ks2 = false;
+bool ks3 = false;
+bool ks4 = false;
+
+//this stores previous values got from the keystroke
+bool tp1 = false;
+bool tp2 = false;
+bool tp3 = false;
+bool tp4 = false;
+
 //Encoder
 // #define ENCA_left 53
 // #define ENCB_left 51
@@ -44,8 +61,8 @@ RF24 radio(8, 9);  //defines a new radio variable CE, CSN respectively
 
 // Right Motor connections
 #define EN_right 3
-#define IN4 25
-#define IN3 24
+#define IN4 24
+#define IN3 25
 // Left Motor connections
 #define EN_left 2
 #define IN2 23
@@ -57,13 +74,13 @@ const int buttonPin[] = {31, 32, 33, 34};     // the number of the pushbutton pi
 int Threshold = 100;
 int IR_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
 int IR_Bin_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-double IR_weights[8] = {-32, -8, -4, -2, 2, 4, 8, 32};//{-5000, -2000, -1000, 1000, 2000, 5000}; //{-4000, -2000, -1000, 1000, 2000, 4000};  //{-32, -16, -8, -4, -2, 0, 2, 4, 8, 16, 32}
+double IR_weights[8] = {-4, -3, -2, 0, 0, 2, 3, 4}; //{-32, -16, -8, -4, -2, 2, 4, 8, 16, 32}
 
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
 int speed_adjust = 0;
-int Left_MotorBase_speed = 110; // base 110
-int Right_MotorBase_speed = 90;   // limit 80   // base 90
+int Left_MotorBase_speed = 50; // base 110
+int Right_MotorBase_speed = 50;   // limit 80   // base 90
 int max_speed = 130;
 int min_speed = 80;
 
@@ -72,8 +89,8 @@ int redfrequency = 0;
 int greenfrequency = 0;
 int bluefrequency = 0;
 
-float Kp = 0.05; //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
-float Kd = 18; // 85
+float Kp = 80; //0.05 worked   //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
+float Kd = 50; //18 worked   // 85
 float Ki = 0;
 
 float P, D;
@@ -161,8 +178,8 @@ void setup()
   pinMode(pin_blue, OUTPUT);
 
   // Encoders
-  pinMode(ENCA_left, INPUT);
-  pinMode(ENCB_left, INPUT);
+//  pinMode(ENCA_left, INPUT);
+//  pinMode(ENCB_left, INPUT);
 
   // setting up the sonar sensor
   pinMode(trig, OUTPUT);
@@ -190,7 +207,7 @@ void setup()
     //stop();
 
   // Reads the initial state of the outputA
-  aLastState = digitalRead(ENCA_left);
+//  aLastState = digitalRead(ENCA_left);
 
   set_forward();
   current_time = millis();
@@ -206,7 +223,8 @@ void loop()
 //    lcd.print(counter);
     current_time = millis();
   } 
-  start_to_checkpoint1();
+  //start_to_checkpoint1();
+  line_follow();
 }
 
 void set_rgb_color(int r, int g, int b)
@@ -646,7 +664,7 @@ int read_received_color_value()
   if (R_val>=3) return 1;
   else if (G_val>=3) return 2;
   else if (B_val>=3) return 3;
-  else if (R_val=0 && G_val=0 && B_val=0 && O_val=0) return -1;
+  else if (R_val==0 && G_val==0 && B_val==0 && O_val==0) return -1;
   else return 4;
 }
 
@@ -931,7 +949,7 @@ void _to_dotted_line()
   if (stage == 3)
   {
     current_time = millis();
-    char side[] = 'L';
+    char side[0] = "L";
     while (true) {
       read_ir();
       if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
@@ -1002,7 +1020,7 @@ void _to_dotted_line()
       //   //Serial.println("Turning right");
       //   turn_left_90();
       // }
-      else if(measure_distance() < 7 && side == 'L')
+      else if(measure_distance() < 7 && side == "L")
       {
         lcd.clear(); 
         lcd.setCursor(0, 0);
@@ -1011,9 +1029,9 @@ void _to_dotted_line()
         delay(50);
         turn_right_90_using_delay();
         left_to_right();
-        side = 'R';
+        side[0] = "R";
       }
-      else if(measure_distance() < 7 && side == 'R')
+      else if(measure_distance() < 7 && side == "R")
       {
         lcd.clear(); 
         lcd.setCursor(0, 0);
@@ -1022,7 +1040,7 @@ void _to_dotted_line()
         delay(50);
         turn_left_90_using_delay();
         right_to_left();
-        side = 'L';
+        side[0] = "L";
       }
       else {
         if ((millis() - current_time) > 1000){
@@ -1163,10 +1181,7 @@ void read_received_box_color()
     {
       color = read_received_color_value();
     }
-    else
-    {
-      stage+=1;
-    }
+    stage+=1;
   }
 }
 
@@ -1288,7 +1303,7 @@ void box_pickup_to_unload()
         lcd.print("Box unloaded");
         stop();
         delay(50);
-        pid_backward();
+        pid_backward(1000);
         delay(1000);
         turn_left_180();
         stage+=1;
@@ -1310,65 +1325,65 @@ void box_pickup_to_unload()
   }
 }
 
-void unload_to_T_junction()
-{
-  if (stage == 9)
-  {
-    current_time = millis();
-    if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
-      lcd.clear(); 
-      lcd.setCursor(0, 0);
-      lcd.print("Right Junction");
-      stop();
-      delay(50);
-      pid_forward(100);
-      stop();
-      delay(50);
-      lcd.clear(); 
-      lcd.setCursor(0, 0);
-      lcd.print("Turning right");
-      //Serial.println("Turning right");
-      turn_right_90();
-    }
-    else if (IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0)
-    {
-      lcd.clear(); 
-      lcd.setCursor(0, 0);
-      lcd.print("Cross Junction");
-      forward();
-      delay(100); // enough delay to go past the junction
-    }
-    else if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Left Junction");
-        //Serial.println("We are at a left Junction");
-        stop();
-        delay(50);
-        pid_forward(100);  // will have to change the # steps
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning left");
-        //Serial.println("Turning left");
-        stop();
-        delay(50);
-        turn_left_90();
-        stage+=1;
-        break;
-      } 
-    else{
-        if ((millis() - current_time) > 1000){
-          lcd.clear(); 
-          lcd.setCursor(0, 0);
-          lcd.print("Moving Forward");
-          current_time = millis();
-        }
-        //Serial.println("Moving Forward");
-        set_forward();
-        line_follow(); 
-      }
-  }
-}
+//void unload_to_T_junction()
+//{
+//  if (stage == 9)
+//  {
+//    current_time = millis();
+//    if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
+//      lcd.clear(); 
+//      lcd.setCursor(0, 0);
+//      lcd.print("Right Junction");
+//      stop();
+//      delay(50);
+//      pid_forward(100);
+//      stop();
+//      delay(50);
+//      lcd.clear(); 
+//      lcd.setCursor(0, 0);
+//      lcd.print("Turning right");
+//      //Serial.println("Turning right");
+//      turn_right_90();
+//    }
+//    else if (IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0)
+//    {
+//      lcd.clear(); 
+//      lcd.setCursor(0, 0);
+//      lcd.print("Cross Junction");
+//      forward();
+//      delay(100); // enough delay to go past the junction
+//    }
+//    else if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
+//        lcd.clear(); 
+//        lcd.setCursor(0, 0);
+//        lcd.print("Left Junction");
+//        //Serial.println("We are at a left Junction");
+//        stop();
+//        delay(50);
+//        pid_forward(100);  // will have to change the # steps
+//        lcd.clear(); 
+//        lcd.setCursor(0, 0);
+//        lcd.print("Turning left");
+//        //Serial.println("Turning left");
+//        stop();
+//        delay(50);
+//        turn_left_90();
+//        stage+=1;
+//        break;
+//      } 
+//    else{
+//        if ((millis() - current_time) > 1000){
+//          lcd.clear(); 
+//          lcd.setCursor(0, 0);
+//          lcd.print("Moving Forward");
+//          current_time = millis();
+//        }
+//        //Serial.println("Moving Forward");
+//        set_forward();
+//        line_follow(); 
+//      }
+//  }
+//}
 
 void T_junction_to_finish()
 {
@@ -1456,3 +1471,187 @@ void T_junction_to_finish()
     }
   }
 }
+
+
+// void menu(){
+//   while(update_btns()){
+//     delay(2);
+//   }
+
+
+//   display_lcd("Menu", "for bac jun ult ");
+//   int choice = get_pressed_button();
+  
+//   if(choice == 1){
+//     state = "forward";
+//     display_lcd("Line Following", "Forward");
+//     delay(1000);
+ 
+//   }else if(choice == 2){
+//     state = "back";
+//     display_lcd("Line Following", "backward");
+//     delay(1000);
+ 
+//   }else if(choice == 3){
+    
+//     display_lcd("Junction train", "get dis 90 180 ");
+//     choice = get_pressed_button();
+//     switch (choice){
+//       case 1:
+//         state = "detect_junc";
+//         break;
+//       case 2:
+//         state = "get distance";
+//         break;
+//       case 3:
+//         state = "turn 90";
+//         break;
+//       case 4:
+//         state = "turn 180";
+//         break;
+//     }
+
+//     display_lcd("State",state);
+    
+//   }else if(choice == 4){
+//     state = "ultra";
+//     display_lcd("gate training",state);
+//   }
+// }
+
+// int get_pressed_button(){
+//   while(!(update_btns())){//this is to wait until a button is pressed
+//     delay(5);
+    
+//   }
+
+//   while((update_btns())){//this is to wait until the button is released
+//     delay(5);
+//     if(ks1 == true && ks4 == true){
+//       display_lcd("State 5", "Entered");
+//       delay((1000));
+//       return 5;
+//     }
+//   }
+
+//   if(ks1 == true){
+//     return 1;
+//   }else if(ks2 == true ){
+//     return 2;
+//   }else if(ks3 == true ){
+//     return 3;
+//   }else{
+//     return 4;
+//   }
+
+// }
+
+// void change_forward_pid(){//ui to change forward pid values
+//   stop();    
+//   while(true){
+//     int choice = get_pressed_button();
+//     update_btns();
+//     if(choice == 1){
+//       Kp--;
+//     }else if(choice==2){
+//       Kp++;
+//     }else if(choice == 3){
+//       Kd--;
+//     }else if(choice==4){
+//       Kd++;
+//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+//       display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
+//       update_btns();
+//       break;
+//     }
+//     display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
+//   }
+// }
+
+// void change_turn90_right_time(){
+//   stop();    
+//   while(true){
+//     int choice = get_pressed_button();
+//     update_btns();
+//     if(choice == 1){
+//       dR90 -= 50;
+//     }else if(choice == 2){
+//       dR90 += 50;
+//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+//       display_lcd("TR90 time :" ,(String)dR90);
+//       update_btns();
+//       break;
+//     }
+//     display_lcd("TR90 time :" ,(String)dR90);
+//   }
+// }
+
+// void change_turn90_left_time(){
+//   stop();    
+//   while(true){
+//     int choice = get_pressed_button();
+//     update_btns();
+//     if(choice == 1){
+//       dL90 -= 50;
+//     }else if(choice == 2){
+//       dL90 += 50;
+//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+//       display_lcd("TL90 time :" ,(String)dL90);
+//       update_btns();
+//       break;
+//     }
+//     display_lcd("TL90 time :" ,(String)dL90);
+//   }
+// }
+
+// void change_turn180_left_time(){
+//   stop();    
+//   while(true){
+//     int choice = get_pressed_button();
+//     update_btns();
+//     if(choice == 1){
+//       dL180 -= 50;
+//     }else if(choice == 2){
+//       dL180 += 50;
+//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+//       display_lcd("TL180 time :" ,(String)dL180);
+//       update_btns();
+//       break;
+//     }
+//     display_lcd("TL180 time :" ,(String)dL180);
+//   }
+// }
+
+// //keypad functions
+// bool update_btns(){
+//   // bool tp1 = false;
+//   // bool tp2 = false;
+//   // bool tp3 = false;
+//   // bool tp4 = false;
+//   bool pressed = false;
+//   ks1 = tp1;
+//   ks2 = tp2;
+//   ks3 = tp3;
+//   ks4 = tp4;
+//   tp1 = false;
+//   tp2 = false;
+//   tp3 = false;
+//   tp4 = false;
+//   if(digitalRead(key1) == LOW){
+//     tp1 = true;
+//     pressed = true;
+//   }
+//   if(digitalRead(key2) == LOW){
+//     tp2 = true;
+//     pressed = true;
+//   }
+//   if(digitalRead(key3) == LOW){
+//     tp3 = true;
+//     pressed = true;
+//   }
+//   if(digitalRead(key4) == LOW){
+//     tp4 = true;
+//     pressed = true;
+//   }
+//   return pressed;
+// }
