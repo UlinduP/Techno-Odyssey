@@ -96,7 +96,7 @@ float Ki = 0;
 float P, D;
 float I = 0;   // I is again and again set to zero in pid_forward()
 
-int ir_to_wheels_dist = -164;  // encoder value 
+int ir_to_wheels_dist = 100;  // encoder value 
 float error = 0;
 float previousError = 0; //46
 
@@ -949,7 +949,7 @@ void _to_dotted_line()
   if (stage == 3)
   {
     current_time = millis();
-    char side[0] = "L";
+    String side = "L";
     while (true) {
       read_ir();
       if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
@@ -1029,7 +1029,7 @@ void _to_dotted_line()
         delay(50);
         turn_right_90_using_delay();
         left_to_right();
-        side[0] = "R";
+        side = "R";
       }
       else if(measure_distance() < 7 && side == "R")
       {
@@ -1040,7 +1040,7 @@ void _to_dotted_line()
         delay(50);
         turn_left_90_using_delay();
         right_to_left();
-        side[0] = "L";
+        side = "L";
       }
       else {
         if ((millis() - current_time) > 1000){
