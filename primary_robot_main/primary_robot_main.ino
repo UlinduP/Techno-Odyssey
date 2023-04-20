@@ -74,23 +74,23 @@ RF24 radio(8, 9);  //defines a new radio variable CE, CSN respectively
 int Threshold = 100;
 int IR_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
 int IR_Bin_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-double IR_weights[8] = {-4, -3, -2, 0, 0, 2, 3, 4}; //{-32, -16, -8, -4, -2, 2, 4, 8, 16, 32}
+double IR_weights[8] = {-8, -4, -2, 0, 0, 2, 4, 8};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
 
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
 int speed_adjust = 0;
-int Left_MotorBase_speed = 50; // base 110
-int Right_MotorBase_speed = 50;   // limit 80   // base 90
+int Left_MotorBase_speed = 80; // base 110
+int Right_MotorBase_speed = 80;   // limit 80   // base 90
 int max_speed = 130;
-int min_speed = 80;
+int min_speed = 30;
 
 // color sensor readings
 int redfrequency = 0;
 int greenfrequency = 0;
 int bluefrequency = 0;
 
-float Kp = 80; //0.05 worked   //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
-float Kd = 50; //18 worked   // 85
+float Kp = 0.05; //0.05 worked   //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
+float Kd = 105; //18 worked   // 85
 float Ki = 0;
 
 float P, D;

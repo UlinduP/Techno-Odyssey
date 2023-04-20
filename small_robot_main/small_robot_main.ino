@@ -395,11 +395,11 @@ void read_ir()
    {
      if (IR_val[i] >= Threshold)
      {
-       IR_Bin_val[i] = 0;       //change for white strips on black surface
+       IR_Bin_val[i] = 1;       //change for white strips on black surface
      }
      else
      {
-       IR_Bin_val[i] = 1;
+       IR_Bin_val[i] = 0;
      }
    }
 
