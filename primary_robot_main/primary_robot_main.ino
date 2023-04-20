@@ -96,7 +96,8 @@ float Ki = 0;
 float P, D;
 float I = 0;   // I is again and again set to zero in pid_forward()
 
-int ir_to_wheels_dist = 100;  // encoder value 
+int ir_to_wheels_dist = 50;  // encoder value 
+
 float error = 0;
 float previousError = 0; //46
 
@@ -223,8 +224,8 @@ void loop()
 //    lcd.print(counter);
     current_time = millis();
   } 
-  //start_to_checkpoint1();
-  line_follow();
+  start_to_checkpoint1();
+  //line_follow();
 }
 
 void set_rgb_color(int r, int g, int b)
@@ -501,11 +502,11 @@ void read_ir()
     {
       if (IR_val[i] >= Threshold)
       {
-        IR_Bin_val[i] = 1;       //change for white strips on black surface
+        IR_Bin_val[i] = 0;       //change for white strips on black surface
       }
       else
       {
-        IR_Bin_val[i] = 0;
+        IR_Bin_val[i] = 1;
       }
     }
 
