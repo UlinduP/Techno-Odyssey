@@ -68,7 +68,7 @@ RF24 radio(8, 9);  //defines a new radio variable CE, CSN respectively
 #define IN2 23
 #define IN1 22
 
-const int buttonPin[] = {31, 32, 33, 34};     // the number of the pushbutton pins
+//const int buttonPin[] = {31, 32, 33, 34};     // the number of the pushbutton pins
 
 
 int Threshold = 100;
@@ -681,7 +681,7 @@ void start_to_checkpoint1()
         //Serial.println("We are at a left Junction");
         stop();
         delay(50);
-        pid_forward(100);  // will have to change the # steps
+        pid_forward(ir_to_wheels_dist);  // will have to change the # steps
         lcd.clear(); 
         lcd.setCursor(0, 0);
         lcd.print("Turning left");
@@ -697,7 +697,7 @@ void start_to_checkpoint1()
         //Serial.println("We are at a right junction");
         stop();
         delay(50);
-        pid_forward(100);
+        pid_forward(ir_to_wheels_dist);
         stop();
         delay(50);
         lcd.clear(); 
