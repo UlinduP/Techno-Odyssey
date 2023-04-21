@@ -118,7 +118,7 @@ int dR90 = 700;
 int dL90 = 700;
 int dL180 = 1400;
 
-
+state = "stop";
 
 void set_rgb_color();
 void set_forward();
@@ -130,9 +130,7 @@ void pid_backward(int steps);
 void turn_left();
 void turn_right(); // after turn left or turn right functions you need to specify the delay and then stop
 void turn_left_90();
-void turn_left_until_middle();
 void turn_right_90();
-void turn_right_until_middle()
 void turn_right_90_using_delay();
 void turn_left_180();
 void turn_left_90_using_delay();
@@ -147,8 +145,6 @@ int read_color_sensor();
 int read_received_color_value();
 void start_to_checkpoint1();
 void checkpoint1();
-void checkpoint_follow();
-void lower_gate();
 void checkpoint1_to_();
 void _to_dotted_line();
 void left_to_right();
@@ -161,8 +157,16 @@ void box_pickup_to_unload();
 //void unload_to_T_junction();
 void unload_to_finish();
 void checkpoint_follow();
+void lower_gate();
 void arm_down();
 void arm_up();
+bool update_btns();
+void change_turn180_left_time();
+void change_turn90_left_time();
+void change_turn90_right_time();
+void change_forward_pid();
+int get_pressed_button();
+void menu();
 
 void setup()
 {
@@ -173,13 +177,13 @@ void setup()
   lcd.backlight();
 
 
-	// Set all the motor control pins to outputs
-	pinMode(EN_right, OUTPUT);
-	pinMode(EN_left, OUTPUT);
-	pinMode(IN1, OUTPUT);
-	pinMode(IN2, OUTPUT);
-	pinMode(IN3, OUTPUT);
-	pinMode(IN4, OUTPUT);
+  // Set all the motor control pins to outputs
+  pinMode(EN_right, OUTPUT);
+  pinMode(EN_left, OUTPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
 
   //buzzer
   pinMode(buzzer, OUTPUT);
@@ -196,7 +200,7 @@ void setup()
   // setting up the sonar sensor
   pinMode(trig, OUTPUT);
   pinMode(echo, INPUT);
-	
+  
   // Set all the color sensor pin configurations
   pinMode(S0, OUTPUT);
   pinMode(S1, OUTPUT);
@@ -215,7 +219,7 @@ void setup()
   radio.setDataRate(RF24_250KBPS);
   radio.startListening();
 
-	// Turn off motors - Initial state
+  // Turn off motors - Initial state
     //stop();
 
   // Reads the initial state of the outputA
@@ -228,6 +232,8 @@ void setup()
 
 void loop()
 {
+  update_btns();
+
   if((millis()-current_time)>1000){
     lcd.clear();
     lcd.setCursor(0,0);
@@ -238,7 +244,246 @@ void loop()
   } 
   // start_to_checkpoint1();
   //line_follow();
+
+  //menu access long press 4 to access menu
+  if(ks4 == true){
+    stop();
+    delay(500);
+    update_btns();
+    if(ks4 == true){
+      for(int i =0; i < 3; i++){
+        horn(200);
+        delay(300);
+      }
+      menu();
+    }else{
+      horn(400); //use this to on or off something
+      // set_forward();
+    }
+  }
+
+// state manager
+  if(state == "stop"){
+    display_lcd("Stopped");
+    stop();
+  }else if(state == "kpkd"){
+    display_lcd("kpkd");
+    change_forward_pid();
+    //set_forward();
+  // }else if (state == "back"){
+  //   line_back();
+  // }else if(state == "forward"){
+  //   line_front();
+  // }else if (state == "detect_junc"){
+  //   jun_det_line_follow();
+  // }else if(state == "get distance"){
+  //   mes_dis_travel();
+  // }else if (state == "turn 90"){
+  //   det_jun_turn_90();
+  // }else if(state == "turn 180"){
+  //   turn_180();
+  // }else if(state == "ultra"){
+  //   //add code to run gate detection
+  // }
+  line_follow();
 }
+
+
+void menu(){
+  while(update_btns()){
+    delay(2);
+  }
+
+
+  display_lcd("Menu", "kpkd bac jun ult ");
+  int choice = get_pressed_button();
+  
+  if(choice == 1){
+    state = "kpkd";
+    display_lcd("kpkd");
+    delay(1000);
+ 
+  }else if(choice == 2){
+    state = "back";
+    display_lcd("Line Following", "backward");
+    delay(1000);
+ 
+  }else if(choice == 3){
+    
+    display_lcd("Junction train", "get dis 90 180 ");
+    choice = get_pressed_button();
+    switch (choice){
+      case 1:
+        state = "detect_junc";
+        break;
+      case 2:
+        state = "get distance";
+        break;
+      case 3:
+        state = "turn 90";
+        break;
+      case 4:
+        state = "turn 180";
+        break;
+    }
+
+    display_lcd("State",state);
+    
+  }else if(choice == 4){
+    state = "ultra";
+    display_lcd("gate training",state);
+  }
+}
+
+int get_pressed_button(){
+  while(!(update_btns())){//this is to wait until a button is pressed
+    delay(5);
+    
+  }
+
+  while((update_btns())){//this is to wait until the button is released
+    delay(5);
+    if(ks1 == true && ks4 == true){
+      display_lcd("State 5", "Entered");
+      delay((1000));
+      return 5;
+    }
+  }
+
+  if(ks1 == true){
+    return 1;
+  }else if(ks2 == true ){
+    return 2;
+  }else if(ks3 == true ){
+    return 3;
+  }else{
+    return 4;
+  }
+
+}
+
+void change_forward_pid(){//ui to change forward pid values
+  stop();    
+  while(true){
+    int choice = get_pressed_button();
+    update_btns();
+    if(choice == 1){
+      Kp--;
+    }else if(choice==2){
+      Kp++;
+    }else if(choice == 3){
+      Kd--;
+    }else if(choice==4){
+      Kd++;
+    }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+      display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
+      update_btns();
+      break;
+    }
+    display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
+  }
+}
+
+void change_turn90_right_time(){
+  stop();    
+  while(true){
+    int choice = get_pressed_button();
+    update_btns();
+    if(choice == 1){
+      dR90 -= 50;
+    }else if(choice == 2){
+      dR90 += 50;
+    }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+      display_lcd("TR90 time :" ,(String)dR90);
+      update_btns();
+      break;
+    }
+    display_lcd("TR90 time :" ,(String)dR90);
+  }
+}
+
+void change_turn90_left_time(){
+  stop();    
+  while(true){
+    int choice = get_pressed_button();
+    update_btns();
+    if(choice == 1){
+      dL90 -= 50;
+    }else if(choice == 2){
+      dL90 += 50;
+    }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+      display_lcd("TL90 time :" ,(String)dL90);
+      update_btns();
+      break;
+    }
+    display_lcd("TL90 time :" ,(String)dL90);
+  }
+}
+
+void change_turn180_left_time(){
+  stop();    
+  while(true){
+    int choice = get_pressed_button();
+    update_btns();
+    if(choice == 1){
+      dL180 -= 50;
+    }else if(choice == 2){
+      dL180 += 50;
+    }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+      display_lcd("TL180 time :" ,(String)dL180);
+      update_btns();
+      break;
+    }
+    display_lcd("TL180 time :" ,(String)dL180);
+  }
+}
+
+//keypad functions
+bool update_btns(){
+  // bool tp1 = false;
+  // bool tp2 = false;
+  // bool tp3 = false;
+  // bool tp4 = false;
+  bool pressed = false;
+  ks1 = tp1;
+  ks2 = tp2;
+  ks3 = tp3;
+  ks4 = tp4;
+  tp1 = false;
+  tp2 = false;
+  tp3 = false;
+  tp4 = false;
+  if(digitalRead(key1) == LOW){
+    tp1 = true;
+    pressed = true;
+  }
+  if(digitalRead(key2) == LOW){
+    tp2 = true;
+    pressed = true;
+  }
+  if(digitalRead(key3) == LOW){
+    tp3 = true;
+    pressed = true;
+  }
+  if(digitalRead(key4) == LOW){
+    tp4 = true;
+    pressed = true;
+  }
+  return pressed;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void set_rgb_color(int r, int g, int b)
 {
@@ -1485,187 +1730,3 @@ void unload_to_finish()
     }
   }
 }
-
-
-// void menu(){
-//   while(update_btns()){
-//     delay(2);
-//   }
-
-
-//   display_lcd("Menu", "for bac jun ult ");
-//   int choice = get_pressed_button();
-  
-//   if(choice == 1){
-//     state = "forward";
-//     display_lcd("Line Following", "Forward");
-//     delay(1000);
- 
-//   }else if(choice == 2){
-//     state = "back";
-//     display_lcd("Line Following", "backward");
-//     delay(1000);
- 
-//   }else if(choice == 3){
-    
-//     display_lcd("Junction train", "get dis 90 180 ");
-//     choice = get_pressed_button();
-//     switch (choice){
-//       case 1:
-//         state = "detect_junc";
-//         break;
-//       case 2:
-//         state = "get distance";
-//         break;
-//       case 3:
-//         state = "turn 90";
-//         break;
-//       case 4:
-//         state = "turn 180";
-//         break;
-//     }
-
-//     display_lcd("State",state);
-    
-//   }else if(choice == 4){
-//     state = "ultra";
-//     display_lcd("gate training",state);
-//   }
-// }
-
-// int get_pressed_button(){
-//   while(!(update_btns())){//this is to wait until a button is pressed
-//     delay(5);
-    
-//   }
-
-//   while((update_btns())){//this is to wait until the button is released
-//     delay(5);
-//     if(ks1 == true && ks4 == true){
-//       display_lcd("State 5", "Entered");
-//       delay((1000));
-//       return 5;
-//     }
-//   }
-
-//   if(ks1 == true){
-//     return 1;
-//   }else if(ks2 == true ){
-//     return 2;
-//   }else if(ks3 == true ){
-//     return 3;
-//   }else{
-//     return 4;
-//   }
-
-// }
-
-// void change_forward_pid(){//ui to change forward pid values
-//   stop();    
-//   while(true){
-//     int choice = get_pressed_button();
-//     update_btns();
-//     if(choice == 1){
-//       Kp--;
-//     }else if(choice==2){
-//       Kp++;
-//     }else if(choice == 3){
-//       Kd--;
-//     }else if(choice==4){
-//       Kd++;
-//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
-//       display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
-//       update_btns();
-//       break;
-//     }
-//     display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
-//   }
-// }
-
-// void change_turn90_right_time(){
-//   stop();    
-//   while(true){
-//     int choice = get_pressed_button();
-//     update_btns();
-//     if(choice == 1){
-//       dR90 -= 50;
-//     }else if(choice == 2){
-//       dR90 += 50;
-//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
-//       display_lcd("TR90 time :" ,(String)dR90);
-//       update_btns();
-//       break;
-//     }
-//     display_lcd("TR90 time :" ,(String)dR90);
-//   }
-// }
-
-// void change_turn90_left_time(){
-//   stop();    
-//   while(true){
-//     int choice = get_pressed_button();
-//     update_btns();
-//     if(choice == 1){
-//       dL90 -= 50;
-//     }else if(choice == 2){
-//       dL90 += 50;
-//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
-//       display_lcd("TL90 time :" ,(String)dL90);
-//       update_btns();
-//       break;
-//     }
-//     display_lcd("TL90 time :" ,(String)dL90);
-//   }
-// }
-
-// void change_turn180_left_time(){
-//   stop();    
-//   while(true){
-//     int choice = get_pressed_button();
-//     update_btns();
-//     if(choice == 1){
-//       dL180 -= 50;
-//     }else if(choice == 2){
-//       dL180 += 50;
-//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
-//       display_lcd("TL180 time :" ,(String)dL180);
-//       update_btns();
-//       break;
-//     }
-//     display_lcd("TL180 time :" ,(String)dL180);
-//   }
-// }
-
-// //keypad functions
-// bool update_btns(){
-//   // bool tp1 = false;
-//   // bool tp2 = false;
-//   // bool tp3 = false;
-//   // bool tp4 = false;
-//   bool pressed = false;
-//   ks1 = tp1;
-//   ks2 = tp2;
-//   ks3 = tp3;
-//   ks4 = tp4;
-//   tp1 = false;
-//   tp2 = false;
-//   tp3 = false;
-//   tp4 = false;
-//   if(digitalRead(key1) == LOW){
-//     tp1 = true;
-//     pressed = true;
-//   }
-//   if(digitalRead(key2) == LOW){
-//     tp2 = true;
-//     pressed = true;
-//   }
-//   if(digitalRead(key3) == LOW){
-//     tp3 = true;
-//     pressed = true;
-//   }
-//   if(digitalRead(key4) == LOW){
-//     tp4 = true;
-//     pressed = true;
-//   }
-//   return pressed;
-// }
