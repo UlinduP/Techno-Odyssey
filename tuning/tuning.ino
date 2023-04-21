@@ -284,7 +284,7 @@ void loop()
   //   turn_180();
   // }else if(state == "ultra"){
   //   //add code to run gate detection
-  // }
+   }
   line_follow();
 }
 
