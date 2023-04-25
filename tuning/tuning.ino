@@ -1,8 +1,12 @@
 #include <NewPing.h>  // import the NewPing library for ultrasonic sensor
-#include <LiquidCrystal_I2C.h>
+//#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #include <SPI.h>    // import the relevent library for SPI communication
 #include <nRF24L01.h>  // import the library for radio module
 #include <RF24.h>
+#include <Servo.h>
 
 // sensors
 #define IR1 A0
@@ -15,7 +19,7 @@
 #define IR8 A7
 
 //buzzer
-#define buzzer 4
+#define buzzerd 4
 
 //RGB
 #define pin_red 5
@@ -23,8 +27,8 @@
 #define pin_blue 7
 
 //Sonar
-#define trig 10
-#define echo 11
+#define trig 31
+#define echo 32
 
 //RGB
 #define S0 26
@@ -34,10 +38,11 @@
 #define sensorOut 30
 
 //keypad
-#define key1 A10
-#define key2 A11
-#define key3 A8
-#define key4 A9
+#define key1 A9
+#define key2 A8
+#define key3 A11
+#define key4 A10   //key 4 done
+
 
 bool ks1 = false;
 bool ks2 = false;
@@ -55,9 +60,15 @@ bool tp4 = false;
 // #define ENCB_left 51
 
 NewPing ultrasonic(trig, echo); //defines a new ultrasonic variable
-LiquidCrystal_I2C lcd(0x3F, 16, 2); // I2C address 0x27, 16 column and 2 rows
+//LiquidCrystal_I2C lcd(0x3F, 16, 2); // I2C address 0x27, 16 column and 2 rows
+Adafruit_SSD1306 oled = Adafruit_SSD1306(128,64,&Wire,-1);
 RF24 radio(8, 9);  //defines a new radio variable CE, CSN respectively
+Servo arm_servo;
+Servo gate_servo;
 
+// Servo connections
+#define arm_servo_pin 10
+#define gate_servo_pin 11
 
 // Right Motor connections
 #define EN_right 3
@@ -67,6 +78,9 @@ RF24 radio(8, 9);  //defines a new radio variable CE, CSN respectively
 #define EN_left 2
 #define IN2 23
 #define IN1 22
+
+String firstLine = "";
+String lastLine = "";
 
 //const int buttonPin[] = {31, 32, 33, 34};     // the number of the pushbutton pins
 
@@ -81,7 +95,7 @@ int RMotorSpeed = 0;
 int speed_adjust = 0;
 int Left_MotorBase_speed = 80; // base 110
 int Right_MotorBase_speed = 80;   // limit 80   // base 90
-int max_speed = 130;
+int max_speed = 255;
 int min_speed = 30;
 
 // color sensor readings
@@ -118,7 +132,7 @@ int dR90 = 700;
 int dL90 = 700;
 int dL180 = 1400;
 
-state = "stop";
+String state = "stop";
 
 void set_rgb_color();
 void set_forward();
@@ -161,20 +175,39 @@ void lower_gate();
 void arm_down();
 void arm_up();
 bool update_btns();
-void change_turn180_left_time();
-void change_turn90_left_time();
-void change_turn90_right_time();
-void change_forward_pid();
+void display_lcd(String fline = "",String sline = "",int dtime = 0);
+void display_line(String txt, int row = 0); // used to display a line in a row
 int get_pressed_button();
-void menu();
+void menu(); //main menu can be accesed by long pressing 4 when inside of the loop
+void change_forward_linefollow_time();//ui to change the pid forward time (this is used to measure distances)
+void change_det_jun();//ui to change junction and box differentiation time
+void change_backward_pid();//ui to change back pid values
+void change_forward_pid();//ui to change forward pid values
+void change_turn90_right_time();
+void change_turn90_left_time();
+void change_turn180_left_time();
+void change_speed();
+void horn(int dtime);
+
 
 void setup()
 {
   Serial.begin(9600);
 
   // initialize the lcd
-  lcd.init();
-  lcd.backlight();
+  // lcd.init();
+  // lcd.backlight();
+
+    //initialize the oled
+  oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  oled.clearDisplay();
+  oled.setTextColor(WHITE);
+  oled.setTextSize(1);
+  oled.setCursor(0,0);
+
+    //initialize servos
+  gate_servo.attach(gate_servo_pin);
+  arm_servo.attach(arm_servo_pin);
 
 
   // Set all the motor control pins to outputs
@@ -186,7 +219,14 @@ void setup()
   pinMode(IN4, OUTPUT);
 
   //buzzer
-  pinMode(buzzer, OUTPUT);
+  pinMode(buzzerd, OUTPUT);
+  //horn(-1);
+
+  // initialize the keypad
+  pinMode(key1,INPUT_PULLUP);
+  pinMode(key2,INPUT_PULLUP);
+  pinMode(key3,INPUT_PULLUP);
+  pinMode(key4,INPUT_PULLUP);
 
   //RGB
   pinMode(pin_red, OUTPUT);
@@ -227,21 +267,20 @@ void setup()
 
   set_forward();
   current_time = millis();
-  turn_left_90_using_delay();
+  //turn_left_90_using_delay();
 }
 
 void loop()
 {
   update_btns();
 
-  if((millis()-current_time)>1000){
-    lcd.clear();
-    lcd.setCursor(0,0);
-    read_ir();
-    display_ir();
-//    lcd.print(counter);
-    current_time = millis();
-  } 
+//  if((millis()-current_time)>1000){
+//    oled.clearDisplay();
+//    oled.setCursor(0,0);
+//    read_ir();
+//    display_ir();
+//    current_time = millis();
+//  } 
   // start_to_checkpoint1();
   //line_follow();
 
@@ -251,29 +290,32 @@ void loop()
     delay(500);
     update_btns();
     if(ks4 == true){
-      for(int i =0; i < 3; i++){
-        horn(200);
-        delay(300);
-      }
+//      for(int i =0; i < 3; i++){
+//        //horn(200);
+//        delay(300);
+//      }
       menu();
-    }else{
-      horn(400); //use this to on or off something
+    }//else{
+      //horn(400); //use this to on or off something
       // set_forward();
-    }
+      //continue;
+    //}
   }
 
 // state manager
   if(state == "stop"){
     display_lcd("Stopped");
     stop();
-  }else if(state == "kpkd"){
-    display_lcd("kpkd");
+  }else if(state == "line follow"){  //"kpkd"
+    display_lcd("line follow");
+    set_forward();
+    line_follow();
+    
+  }else if (state == "PID"){
     change_forward_pid();
-    //set_forward();
-  // }else if (state == "back"){
-  //   line_back();
-  // }else if(state == "forward"){
-  //   line_front();
+     //line_follow();
+  }else if(state == "change speed"){
+        change_speed();
   // }else if (state == "detect_junc"){
   //   jun_det_line_follow();
   // }else if(state == "get distance"){
@@ -285,9 +327,55 @@ void loop()
   // }else if(state == "ultra"){
   //   //add code to run gate detection
    }
-  line_follow();
+  //line_follow();
 }
 
+void display_lcd(String fline,String sLine, int dtime){
+  
+  if(dtime == 0){
+    
+    if(fline != firstLine && sLine != lastLine){
+      oled.clearDisplay();
+      display_line(fline, 0);
+      firstLine = fline;
+      display_line(sLine, 16);
+      lastLine = sLine;
+    }else if(fline != firstLine){
+      display_line("                ", 0);
+      display_line(fline, 16);
+      firstLine = fline;
+    }else if(sLine != lastLine){
+      display_line("                ", 0);
+      display_line(sLine, 16);
+      lastLine = sLine;
+    }
+
+  }else if(dtime > 0){
+    oled.clearDisplay(); 
+    display_line(fline, 0);
+    display_line(sLine, 16);
+    delay(dtime);
+    oled.clearDisplay();
+    display_lcd(firstLine, lastLine);
+
+  }else{
+    firstLine = "";
+    lastLine = "";
+    oled.clearDisplay(); 
+  }
+}
+
+void display_line(String txt, int row){
+  oled.setCursor(0,row);
+  oled.print(txt);
+  oled.display();
+//  int start = (16 - txt.length())/2; 
+//  for(int i = start; i < txt.length() + start && i < 16 ; i++){
+//    oled.setCursor(i,row);
+//    oled.print(txt[i - start]);
+//    oled.display();
+  //}
+}
 
 void menu(){
   while(update_btns()){
@@ -295,43 +383,44 @@ void menu(){
   }
 
 
-  display_lcd("Menu", "kpkd bac jun ult ");
+  display_lcd("Menu", "stop line follow PID change ");
   int choice = get_pressed_button();
   
   if(choice == 1){
-    state = "kpkd";
-    display_lcd("kpkd");
+    state = "stop";
+    display_lcd("stop");
     delay(1000);
  
   }else if(choice == 2){
-    state = "back";
-    display_lcd("Line Following", "backward");
+    state = "line follow";
+    display_lcd("line follow");
     delay(1000);
  
   }else if(choice == 3){
-    
-    display_lcd("Junction train", "get dis 90 180 ");
-    choice = get_pressed_button();
-    switch (choice){
-      case 1:
-        state = "detect_junc";
-        break;
-      case 2:
-        state = "get distance";
-        break;
-      case 3:
-        state = "turn 90";
-        break;
-      case 4:
-        state = "turn 180";
-        break;
-    }
+    state="PID";
+    display_lcd("PID");
+    delay(1000);
+//    choice = get_pressed_button();
+//    switch (choice){
+//      case 1:
+//        state = "detect_junc";
+//        break;
+//      case 2:
+//        state = "get distance";
+//        break;
+//      case 3:
+//        state = "turn 90";
+//        break;
+//      case 4:
+//        state = "turn 180";
+//        break;
+ //   }
 
-    display_lcd("State",state);
+    //display_lcd("State",state);
     
   }else if(choice == 4){
-    state = "ultra";
-    display_lcd("gate training",state);
+    state = "change speed";
+    display_lcd("change speed");
   }
 }
 
@@ -362,18 +451,61 @@ int get_pressed_button(){
 
 }
 
+void horn(int dtime){ //postive delay, negative off, no arg keep horn
+  if(dtime == 0){
+    digitalWrite(buzzerd,LOW);
+  }else if(dtime > 0){
+    digitalWrite(buzzerd,LOW);
+    delay(dtime);
+    digitalWrite(buzzerd,HIGH);
+  }else{
+    digitalWrite(buzzerd,HIGH);
+  }
+}
+
+void change_speed()
+{
+  stop();    
+  while(true){
+    int choice = get_pressed_button();
+    update_btns();
+    if(choice == 1){
+      Left_MotorBase_speed--;
+      oled.clearDisplay();
+    }else if(choice==2){
+      Left_MotorBase_speed++;
+      oled.clearDisplay();
+    }else if(choice == 3){
+      Right_MotorBase_speed--;
+      oled.clearDisplay();
+    }else if(choice==4){
+      Right_MotorBase_speed++;
+      oled.clearDisplay();
+    }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+      display_lcd("Left : "+(String)Left_MotorBase_speed, "Right : "+(String)Right_MotorBase_speed);
+      update_btns();
+      break;
+    }
+    display_lcd("Left : "+(String)Left_MotorBase_speed, "Right : "+(String)Right_MotorBase_speed);
+  } 
+}
+
 void change_forward_pid(){//ui to change forward pid values
   stop();    
   while(true){
     int choice = get_pressed_button();
     update_btns();
     if(choice == 1){
-      Kp--;
+      oled.clearDisplay();
+      Kp=Kp-0.01;
     }else if(choice==2){
-      Kp++;
+      oled.clearDisplay();
+      Kp=Kp+0.01;
     }else if(choice == 3){
+      oled.clearDisplay();
       Kd--;
     }else if(choice==4){
+      oled.clearDisplay();
       Kd++;
     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
       display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
@@ -759,11 +891,11 @@ void read_ir()
     {
       if (IR_val[i] >= Threshold)
       {
-        IR_Bin_val[i] = 0;       //change for white strips on black surface
+        IR_Bin_val[i] = 1;       //change for white strips on black surface
       }
       else
       {
-        IR_Bin_val[i] = 1;
+        IR_Bin_val[i] = 0;
       }
     }
 
@@ -792,19 +924,20 @@ void read_ir()
 
 void display_ir()
 {
-    lcd.clear(); 
-    lcd.setCursor(0, 0);  
+    oled.clearDisplay(); 
+    oled.setCursor(0, 0);  
     for (int i = 0; i < 4; i++)
     {     
-      lcd.print(IR_val[i]);
-      lcd.print(" ");   
+      oled.print(IR_val[i]);
+      oled.print(" ");   
     }
-    lcd.setCursor(0, 1);
+    oled.setCursor(0, 16);
     for (int i = 4; i < 8; i++)
     {     
-      lcd.print(IR_val[i]);
-      lcd.print(" ");   
-    }
+      oled.print(IR_val[i]);
+      oled.print(" ");   
+    }  
+    oled.display();
 }
 
 // void read_encoders()
@@ -933,34 +1066,36 @@ void start_to_checkpoint1()
     while (true) {
       read_ir();
       if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Left Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Left Junction");
+        oled.display();
         //Serial.println("We are at a left Junction");
         stop();
         delay(50);
         pid_forward(ir_to_wheels_dist);  // will have to change the # steps
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning left");
+        oled.setCursor(0, 16);
+        oled.print("Turning left");
+        oled.display();
         //Serial.println("Turning left");
         stop();
         delay(50);
         turn_left_90();
       } 
       else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Right Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Right Junction");
+        oled.display();
         //Serial.println("We are at a right junction");
         stop();
         delay(50);
         pid_forward(ir_to_wheels_dist);
         stop();
         delay(50);
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning right");
+        oled.setCursor(0, 16);
+        oled.print("Turning right");
+        oled.display();
         //Serial.println("Turning right");
         turn_right_90();
       }
@@ -968,23 +1103,26 @@ void start_to_checkpoint1()
         delay(50);
         pid_forward(ir_to_wheels_dist);
         if (IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0){
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("Stage 1 completed!");
+          oled.clearDisplay();
+          oled.setCursor(0, 0);
+          oled.print("Stage 1 completed!");
+          oled.display();
           stage+=1;
           break;
         }
         else{
-          lcd.clear();
-          lcd.setCursor(0, 0);
-          lcd.print("Turning left");
+          oled.clearDisplay();
+          oled.setCursor(0, 0);
+          oled.print("Turning left");
+          oled.display();
           turn_left_90();
         }
       }
       else if (IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1 && IR_Bin_val[3] == 1 && IR_Bin_val[4] == 1 && IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1){
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Dead end");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Dead end");
+        oled.display();
         //Serial.println("We are at a dead end");
         stop();
         delay(50);
@@ -992,9 +1130,10 @@ void start_to_checkpoint1()
       } 
       else {
         if ((millis() - current_time) > 1000){
-          lcd.clear(); 
-          lcd.setCursor(0, 0);
-          lcd.print("Moving Forward");
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Moving Forward");
+          oled.display();
           current_time = millis();
         }
         //Serial.println("Moving Forward");
@@ -1148,11 +1287,6 @@ void checkpoint_follow()
     motor_speed();
 }
 
-void lower_gate()
-{
-
-}
-
 void checkpoint1_to_()
 {
   if (stage == 2)
@@ -1160,42 +1294,45 @@ void checkpoint1_to_()
     while (true)
     {
       if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Left Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Left Junction");
+        oled.display();
         //Serial.println("We are at a left Junction");
         stop();
         delay(50);
         pid_forward(ir_to_wheels_dist);  // will have to change the # steps
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning left");
+        oled.setCursor(0, 16);
+        oled.print("Turning left");
+        oled.display();
         //Serial.println("Turning left");
         stop();
         delay(50);
         turn_left_90();
       } 
       else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Right Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Right Junction");
+        oled.display();
         //Serial.println("We are at a right junction");
         stop();
         delay(50);
         pid_forward(ir_to_wheels_dist);
         stop();
         delay(50);
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning right");
+        oled.setCursor(0, 16);
+        oled.print("Turning right");
+        oled.display();
         //Serial.println("Turning right");
         turn_right_90();
       }
       else if(IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1)
       {
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("Y junction");
+        oled.clearDisplay();
+        oled.setCursor(0, 0);
+        oled.print("Y junction");
+        oled.display();
         stage+=1;
         break;
       }
@@ -1212,9 +1349,10 @@ void _to_dotted_line()
     while (true) {
       read_ir();
       if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Left Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Left Junction");
+        oled.display();
         //Serial.println("We are at a left Junction");
         stop();
         delay(50);
@@ -1222,43 +1360,47 @@ void _to_dotted_line()
         //Serial.println("Turning left");
         stop();
         delay(50);
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning Right");
+        oled.setCursor(0, 16);
+        oled.print("Turning Right");
+        oled.display();
         turn_right_90();
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Stage completed");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Stage completed");
+        oled.display();
         stage += 1;
         break;
       } 
       else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
       {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Right Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Right Junction");
+        oled.display();
         //Serial.println("We are at a right junction");
         stop();
         delay(50);
         pid_forward(ir_to_wheels_dist);
         stop();
-        delay(50);
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning left");
+        delay(50); 
+        oled.setCursor(0, 16);
+        oled.print("Turning left");
+        oled.display();
         //Serial.println("Turning right");
         turn_left_90();
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Stage completed");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Stage completed");
+        oled.display();
         stage += 1;
         break;
       }
       else if(IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1)
       {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Y Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Y Junction");
+        oled.display();
         stop();
         delay(50);
         turn_left_90(); // will turn until middle two sensors are on the line
@@ -1281,9 +1423,10 @@ void _to_dotted_line()
       // }
       else if(measure_distance() < 7 && side == "L")
       {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Obstacle found");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Obstacle found");
+        oled.display();
         stop();
         delay(50);
         turn_right_90_using_delay();
@@ -1292,9 +1435,9 @@ void _to_dotted_line()
       }
       else if(measure_distance() < 7 && side == "R")
       {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Obstacle found");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Obstacle found");
         stop();
         delay(50);
         turn_left_90_using_delay();
@@ -1303,9 +1446,9 @@ void _to_dotted_line()
       }
       else {
         if ((millis() - current_time) > 1000){
-          lcd.clear(); 
-          lcd.setCursor(0, 0);
-          lcd.print("Moving Forward");
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Moving Forward");
           current_time = millis();
         }
         //Serial.println("Moving Forward");
@@ -1323,15 +1466,16 @@ void left_to_right()
   while (true){
     if (IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0)
     {
-      lcd.clear(); 
-      lcd.setCursor(0, 0);
-      lcd.print("Line Detected");
+      oled.clearDisplay(); 
+      oled.setCursor(0, 0);
+      oled.print("Line Detected");
+      oled.display();
       stop();
       forward();
-      delay(500);
-      lcd.clear(); 
-      lcd.setCursor(0, 0);
-      lcd.print("Turning Left");
+      delay(500); 
+      oled.setCursor(0, 16);
+      oled.print("Turning Left");
+      oled.display();
       turn_left_90();
       break;
     }
@@ -1346,16 +1490,17 @@ void right_to_left()
   while (true){
     if (IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0)
     {
-      lcd.clear(); 
-      lcd.setCursor(0, 0);
-      lcd.print("Line Detected");
+      oled.clearDisplay(); 
+      oled.setCursor(0, 0);
+      oled.print("Line Detected");
+      oled.display();
       stop();
       delay(50);
       forward();
-      delay(500);
-      lcd.clear(); 
-      lcd.setCursor(0, 0);
-      lcd.print("Turning Left");
+      delay(500); 
+      oled.setCursor(0, 16);
+      oled.print("Turning Left");
+      oled.display();
       turn_right_90();
       break;
     }
@@ -1385,9 +1530,10 @@ void dotted_line_to_checkpoint2()
 
       if (idx > 4)
       {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Line on right");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Line on right");
+        oled.display();
         stop();
         delay(50);
         turn_right_until_middle();
@@ -1395,9 +1541,10 @@ void dotted_line_to_checkpoint2()
 
       else if (idx < 4)
       {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Line on left");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Line on left");
+        oled.display();
         stop();
         delay(50);
         turn_left_until_middle();
@@ -1410,18 +1557,20 @@ void dotted_line_to_checkpoint2()
     }
     else if (IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)
     {
-      lcd.clear(); 
-      lcd.setCursor(0, 0);
-      lcd.print("Checkpoint 2 reached");
+      oled.clearDisplay(); 
+      oled.setCursor(0, 0);
+      oled.print("Checkpoint 2 reached");
+      oled.display();
       stage+=1;
       break;
     }
     else
     {
       if ((millis() - current_time) > 1000){
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Moving Forward");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Moving Forward");
+        oled.display();
         current_time = millis();
       }
       //Serial.println("Moving Forward");
@@ -1452,18 +1601,19 @@ void checkpoint2_to_L_junction()
     while (true)
     {
       if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Right Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Right Junction");
+        oled.display();
         //Serial.println("We are at a right junction");
         stop();
         delay(50);
         pid_forward(ir_to_wheels_dist);
         stop();
         delay(50);
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning right");
+        oled.setCursor(0, 16);
+        oled.print("Turning right");
+        oled.display();
         //Serial.println("Turning right");
         turn_right_90();
         stage+=1;
@@ -1471,9 +1621,10 @@ void checkpoint2_to_L_junction()
       }
       else{
         if ((millis() - current_time) > 1000){
-          lcd.clear(); 
-          lcd.setCursor(0, 0);
-          lcd.print("Moving Forward");
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Moving Forward");
+          oled.display();
           current_time = millis();
         }
         //Serial.println("Moving Forward");
@@ -1492,18 +1643,19 @@ void L_junction_to_box_pickup()
     while (true)
     {
       if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Right Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Right Junction");
+        oled.display();
         //Serial.println("We are at a right junction");
         stop();
         delay(50);
         pid_forward(ir_to_wheels_dist);
         stop();
-        delay(50);
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning right");
+        delay(50); 
+        oled.setCursor(0, 16);
+        oled.print("Turning right");
+        oled.display();
         //Serial.println("Turning right");
         turn_right_90();
         arm_down();
@@ -1522,9 +1674,10 @@ void L_junction_to_box_pickup()
       else
       {
         if ((millis() - current_time) > 1000){
-          lcd.clear(); 
-          lcd.setCursor(0, 0);
-          lcd.print("Moving Forward");
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Moving Forward");
+          oled.display();
           current_time = millis();
         }
         //Serial.println("Moving Forward");
@@ -1542,24 +1695,27 @@ void box_pickup_to_unload()
   while (true)
   {
       if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Left Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Left Junction");
+        oled.display();
         forward();
         delay(100); // enough delay to go past the junction
       } 
       else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Right Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Right Junction");
+        oled.display();
         forward();
         delay(100); //enough delay to go past the junction
       }
       else if (IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0)
       {
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("Box unloaded");
+        oled.clearDisplay();
+        oled.setCursor(0, 0);
+        oled.print("Box unloaded");
+        oled.display();
         stop();
         delay(50);
         //pid_backward(1000);
@@ -1571,9 +1727,10 @@ void box_pickup_to_unload()
       else
       {
         if ((millis() - current_time) > 1000){
-          lcd.clear(); 
-          lcd.setCursor(0, 0);
-          lcd.print("Moving Forward");
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Moving Forward");
+          oled.display();
           current_time = millis();
         }
         //Serial.println("Moving Forward");
@@ -1653,17 +1810,19 @@ void unload_to_finish()
     {
       if(IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1)
       {
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("Y junction");
+        oled.clearDisplay();
+        oled.setCursor(0, 0);
+        oled.print("Y junction");
+        oled.display();
         stop();
         delay(50);
         turn_right_90(); // will turn until middle two sensors are on the line
       }
       else if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Left Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Left Junction");
+        oled.display();
         //Serial.println("We are at a left Junction");
         stop();
         delay(50);
@@ -1672,9 +1831,9 @@ void unload_to_finish()
 
         if (IR_Bin_val[3] == 0 || IR_Bin_val[4] == 0 || IR_Bin_val[5] == 0 || IR_Bin_val[6] == 1 || IR_Bin_val[7] == 0)
         {
-          lcd.clear(); 
-          lcd.setCursor(0, 0);
-          lcd.print("Turning right");
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Turning right");
           //Serial.println("Turning left");
           stop();
           delay(50);
@@ -1682,9 +1841,10 @@ void unload_to_finish()
         }
         else
         {
-          lcd.clear(); 
-          lcd.setCursor(0, 0);
-          lcd.print("Turning left");
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Turning left");
+          oled.display();
           //Serial.println("Turning left");
           stop();
           delay(50);
@@ -1692,35 +1852,38 @@ void unload_to_finish()
         }
       } 
       else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Right Junction");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Right Junction");
+        oled.display();
         //Serial.println("We are at a right junction");
         stop();
         delay(50);
         pid_forward(ir_to_wheels_dist);
         stop();
-        delay(50);
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Turning right");
+        delay(50); 
+        oled.setCursor(0, 16);
+        oled.print("Turning right");
+        oled.display();
         //Serial.println("Turning right");
         turn_right_90();
       }
       else if (IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)
       {
         stop();
-        lcd.clear(); 
-        lcd.setCursor(0, 0);
-        lcd.print("Task Completed");
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Task Completed");
+        oled.display();
         stage+=1;
         break;
       }
       else{
         if ((millis() - current_time) > 1000){
-          lcd.clear(); 
-          lcd.setCursor(0, 0);
-          lcd.print("Moving Forward");
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Moving Forward");
+          oled.display();
           current_time = millis();
         }
         //Serial.println("Moving Forward");
@@ -1730,3 +1893,187 @@ void unload_to_finish()
     }
   }
 }
+
+
+// void menu(){
+//   while(update_btns()){
+//     delay(2);
+//   }
+
+
+//   display_lcd("Menu", "for bac jun ult ");
+//   int choice = get_pressed_button();
+  
+//   if(choice == 1){
+//     state = "forward";
+//     display_lcd("Line Following", "Forward");
+//     delay(1000);
+ 
+//   }else if(choice == 2){
+//     state = "back";
+//     display_lcd("Line Following", "backward");
+//     delay(1000);
+ 
+//   }else if(choice == 3){
+    
+//     display_lcd("Junction train", "get dis 90 180 ");
+//     choice = get_pressed_button();
+//     switch (choice){
+//       case 1:
+//         state = "detect_junc";
+//         break;
+//       case 2:
+//         state = "get distance";
+//         break;
+//       case 3:
+//         state = "turn 90";
+//         break;
+//       case 4:
+//         state = "turn 180";
+//         break;
+//     }
+
+//     display_lcd("State",state);
+    
+//   }else if(choice == 4){
+//     state = "ultra";
+//     display_lcd("gate training",state);
+//   }
+// }
+
+// int get_pressed_button(){
+//   while(!(update_btns())){//this is to wait until a button is pressed
+//     delay(5);
+    
+//   }
+
+//   while((update_btns())){//this is to wait until the button is released
+//     delay(5);
+//     if(ks1 == true && ks4 == true){
+//       display_lcd("State 5", "Entered");
+//       delay((1000));
+//       return 5;
+//     }
+//   }
+
+//   if(ks1 == true){
+//     return 1;
+//   }else if(ks2 == true ){
+//     return 2;
+//   }else if(ks3 == true ){
+//     return 3;
+//   }else{
+//     return 4;
+//   }
+
+// }
+
+// void change_forward_pid(){//ui to change forward pid values
+//   stop();    
+//   while(true){
+//     int choice = get_pressed_button();
+//     update_btns();
+//     if(choice == 1){
+//       Kp--;
+//     }else if(choice==2){
+//       Kp++;
+//     }else if(choice == 3){
+//       Kd--;
+//     }else if(choice==4){
+//       Kd++;
+//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+//       display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
+//       update_btns();
+//       break;
+//     }
+//     display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
+//   }
+// }
+
+// void change_turn90_right_time(){
+//   stop();    
+//   while(true){
+//     int choice = get_pressed_button();
+//     update_btns();
+//     if(choice == 1){
+//       dR90 -= 50;
+//     }else if(choice == 2){
+//       dR90 += 50;
+//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+//       display_lcd("TR90 time :" ,(String)dR90);
+//       update_btns();
+//       break;
+//     }
+//     display_lcd("TR90 time :" ,(String)dR90);
+//   }
+// }
+
+// void change_turn90_left_time(){
+//   stop();    
+//   while(true){
+//     int choice = get_pressed_button();
+//     update_btns();
+//     if(choice == 1){
+//       dL90 -= 50;
+//     }else if(choice == 2){
+//       dL90 += 50;
+//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+//       display_lcd("TL90 time :" ,(String)dL90);
+//       update_btns();
+//       break;
+//     }
+//     display_lcd("TL90 time :" ,(String)dL90);
+//   }
+// }
+
+// void change_turn180_left_time(){
+//   stop();    
+//   while(true){
+//     int choice = get_pressed_button();
+//     update_btns();
+//     if(choice == 1){
+//       dL180 -= 50;
+//     }else if(choice == 2){
+//       dL180 += 50;
+//     }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
+//       display_lcd("TL180 time :" ,(String)dL180);
+//       update_btns();
+//       break;
+//     }
+//     display_lcd("TL180 time :" ,(String)dL180);
+//   }
+// }
+
+// //keypad functions
+// bool update_btns(){
+//   // bool tp1 = false;
+//   // bool tp2 = false;
+//   // bool tp3 = false;
+//   // bool tp4 = false;
+//   bool pressed = false;
+//   ks1 = tp1;
+//   ks2 = tp2;
+//   ks3 = tp3;
+//   ks4 = tp4;
+//   tp1 = false;
+//   tp2 = false;
+//   tp3 = false;
+//   tp4 = false;
+//   if(digitalRead(key1) == LOW){
+//     tp1 = true;
+//     pressed = true;
+//   }
+//   if(digitalRead(key2) == LOW){
+//     tp2 = true;
+//     pressed = true;
+//   }
+//   if(digitalRead(key3) == LOW){
+//     tp3 = true;
+//     pressed = true;
+//   }
+//   if(digitalRead(key4) == LOW){
+//     tp4 = true;
+//     pressed = true;
+//   }
+//   return pressed;
+// }

@@ -49,9 +49,9 @@ int IN4 = 12;
 //RF24 radio(7, 8);  //defines a new radio variable CE, CSN respectively
 
 // bluetooth
-  #define RX1 17
-  #define TX1 16
-  SoftwareSerial bluetoothSerial(RX1, TX1);
+// #define RX1 17
+// #define TX1 16
+// SoftwareSerial bluetoothSerial(RX1, TX1);
 //ISSUE :- can send data from phone to mega
 
 
@@ -156,7 +156,7 @@ String serialTxt = "";
 String bluetoothTxt = "";
 
 String state = "stop";
-int steps = 0;
+
 
 //functions legacy
 void set_forward(); //checked
@@ -228,8 +228,6 @@ void mes_dis_travel();//this function is made to measure time it takes to travel
 void det_jun_turn_90();//detect junctions and turn 
 void turn_180();//go forward and turn 180
 void horn(int dtime);
-
-void change_steps();
 
 int t1 = 0,t2 = 0;
 void setup() {
@@ -350,11 +348,11 @@ void loop() {
   if(state == "stop"){
     display_lcd("Stopped");
     stop();
-  }else if(state == "pid front"){
+  }else if(state == "front"){
     display_lcd("forward");
-    pid_forward(steps);
-  }else if (state == "step"){
-    change_steps();
+    set_forward();
+  }else if (state == "back"){
+    line_back();
   }else if(state == "forward"){
     line_front();
   }else if (state == "detect_junc"){
@@ -1001,41 +999,39 @@ void menu(){
   }
 
 
-  display_lcd("Menu", "stop pidfront steps ult ");
+  display_lcd("Menu", "for bac jun ult ");
   int choice = get_pressed_button();
   
   if(choice == 1){
-    state = "stop";
-    display_lcd("stop");
+    state = "forward";
+    display_lcd("Line Following", "Forward");
     delay(1000);
  
   }else if(choice == 2){
-    state = "pid front";
-    display_lcd("pid front");
+    state = "back";
+    display_lcd("Line Following", "backward");
     delay(1000);
  
   }else if(choice == 3){
-    state = "step";
-    display_lcd("step");
-    delay(1000);
- //   display_lcd("Junction train", "get dis 90 180 ");
-//    choice = get_pressed_button();
-//    switch (choice){
-//      case 1:
-//        state = "detect_junc";
-//        break;
-//      case 2:
-//        state = "get distance";
-//        break;
-//      case 3:
-//        state = "turn 90";
-//        break;
-//      case 4:
-//        state = "turn 180";
-//        break;
-//    }
+    
+    display_lcd("Junction train", "get dis 90 180 ");
+    choice = get_pressed_button();
+    switch (choice){
+      case 1:
+        state = "detect_junc";
+        break;
+      case 2:
+        state = "get distance";
+        break;
+      case 3:
+        state = "turn 90";
+        break;
+      case 4:
+        state = "turn 180";
+        break;
+    }
 
- //   display_lcd("State",state);
+    display_lcd("State",state);
     
   }else if(choice == 4){
     state = "ultra";
@@ -1090,29 +1086,7 @@ void change_forward_pid(){//ui to change forward pid values
     }
     display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
   }
-}void change_step(){//ui to change forward pid values
-  stop();    
-  while(true){
-    int choice = get_pressed_button();
-    update_btns();
-    if(choice == 1){
-      steps--;
-    }else if(choice==2){
-      steps++;
-//    }else if(choice == 3){
-//      Kd--;
-//    }else if(choice==4){
-//      Kd++;
-    }else if(choice == 5 ){//to get out of this you need to press 1 and 4 at the same time
-      display_lcd("Kp : "+(String)Kp, "Kd : "+(String)Kd);
-      update_btns();
-      break;
-    }
-    display_lcd((String)steps);
-  }
 }
-
-
 
 void change_backward_pid(){//ui to change backward pid values
   stop();    
