@@ -86,7 +86,7 @@ Servo gate_servo;
 int Threshold = 100;
 int IR_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
 int IR_Bin_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-double IR_weights[8] = {-8, -4, -2, 0, 0, 2, 4, 8};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
+double IR_weights[8] = {-16, -8, -4, -2, 2, 4, 8, 16};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
 
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
@@ -269,9 +269,9 @@ void loop()
     current_time = millis();
   } 
    //start_to_checkpoint1();
-   stage=8;
-   box_pickup_to_unload();
-   delay(10000);
+   stage=5;
+   dotted_line_to_checkpoint2()
+   delay(5000);
 //   checkpoint1();
 }
 
@@ -1589,7 +1589,8 @@ void box_pickup_to_unload()
   if (stage == 8){
   current_time = millis();
   while (true)
-  {
+  {   
+      read_ir();
       if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
         oled.clearDisplay(); 
         oled.setCursor(0, 0);
