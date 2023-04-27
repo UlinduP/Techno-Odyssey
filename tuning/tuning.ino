@@ -1021,9 +1021,10 @@ int read_color_sensor()
     digitalWrite(S3,HIGH);
     bluefrequency = pulseIn(sensorOut, LOW);
   
-    if (redfrequency>250 && redfrequency <289) R_val++;
-    else if (greenfrequency>260 && greenfrequency <300) G_val++;
-    else if (bluefrequency>310 && bluefrequency <350) B_val++;
+    if ((redfrequency>30 && redfrequency <95) && (bluefrequency>60 && bluefrequency<123) && (greenfrequency>80 && greenfrequency<160)) R_val++;
+    else if ((redfrequency>110 && redfrequency <190) && (bluefrequency>80 && bluefrequency<165) && (greenfrequency>70 && greenfrequency<180)) G_val++;
+    else if ((redfrequency>90 && redfrequency <115) && (bluefrequency>35 && bluefrequency<95) && (greenfrequency>70 && greenfrequency<130)) B_val++;
+    else if (bluefrequency<100 && redfrequency<100 && greenfrequency<100) W_val++;
     else O_val++;
     i++;
   }
@@ -1032,7 +1033,8 @@ int read_color_sensor()
     if(R_val>40) return 1;
     else if (G_val>40) return 2;
     else if (B_val>40) return 3;
-    else return 4;
+    else if (W_val>40) return 4;
+    else return 5;
 }
 
 int read_received_color_value()
