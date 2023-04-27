@@ -208,6 +208,7 @@ void setup()
     //initialize servos
   gate_servo.attach(gate_servo_pin);
   arm_servo.attach(arm_servo_pin);
+  arm_servo.write(180);
 
 
   // Set all the motor control pins to outputs
@@ -267,12 +268,18 @@ void setup()
 
   set_forward();
   current_time = millis();
-  //turn_left_90_using_delay();
+  for (int i=0;i<=5;i++)
+  {
+    turn_left_90_using_delay();
+    delay(2000);
+    turn_right_90_using_delay();
+    delay(2000);
+  }
 }
 
 void loop()
 {
-  update_btns();
+  //update_btns();
 
 //  if((millis()-current_time)>1000){
 //    oled.clearDisplay();
@@ -285,37 +292,37 @@ void loop()
   //line_follow();
 
   //menu access long press 4 to access menu
-  if(ks4 == true){
-    stop();
-    delay(500);
-    update_btns();
-    if(ks4 == true){
+//  if(ks4 == true){
+//    stop();
+//    delay(500);
+//    update_btns();
+//    if(ks4 == true){
 //      for(int i =0; i < 3; i++){
 //        //horn(200);
 //        delay(300);
 //      }
-      menu();
-    }//else{
+     // menu();
+    //}//else{
       //horn(400); //use this to on or off something
       // set_forward();
       //continue;
     //}
-  }
+ // }
 
 // state manager
-  if(state == "stop"){
-    display_lcd("Stopped");
-    stop();
-  }else if(state == "line follow"){  //"kpkd"
-    display_lcd("line follow");
-    set_forward();
-    line_follow();
-    
-  }else if (state == "PID"){
-    change_forward_pid();
-     //line_follow();
-  }else if(state == "change speed"){
-        change_speed();
+//  if(state == "stop"){
+//    display_lcd("Stopped");
+//    stop();
+//  }else if(state == "line follow"){  //"kpkd"
+//    display_lcd("line follow");
+//    set_forward();
+//    line_follow();
+//    
+//  }else if (state == "PID"){
+//    change_forward_pid();
+//     //line_follow();
+//  }else if(state == "change speed"){
+//        change_speed();
   // }else if (state == "detect_junc"){
   //   jun_det_line_follow();
   // }else if(state == "get distance"){
@@ -326,8 +333,8 @@ void loop()
   //   turn_180();
   // }else if(state == "ultra"){
   //   //add code to run gate detection
-   }
-  //line_follow();
+  // }
+  
 }
 
 void display_lcd(String fline,String sLine, int dtime){
@@ -798,7 +805,7 @@ void turn_right_until_middle()
 void turn_right_90_using_delay()
 {
     turn_right();
-    delay(1000); // change the delay to change the amount turned
+    delay(705); // change the delay to change the amount turned
     stop();
     delay(50);
 }
@@ -825,7 +832,7 @@ void turn_left_180()
 void turn_left_90_using_delay()
 {
     turn_left();
-    delay(1000); // change the delay to change the amount turned
+    delay(710); // change the delay to change the amount turned
     stop();
     delay(50);
 }
@@ -1006,7 +1013,7 @@ int measure_distance()
 int read_color_sensor()
 {
   int i=0;
-  int R_val=0,G_val=0,B_val=0,O_val =0;
+  int R_val=0,G_val=0,B_val=0,O_val=0,W_val =0;
   do
   {
     digitalWrite(S2,LOW);
