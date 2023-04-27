@@ -1,4 +1,4 @@
-#include <NewPing.h>  // import the NewPing library for ultrasonic sensor
+//#include <NewPing.h>  // import the NewPing library for ultrasonic sensor
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -60,7 +60,7 @@ bool tp4 = false;
 // #define ENCA_left 53
 // #define ENCB_left 51
 
-NewPing ultrasonic(trig, echo); //defines a new ultrasonic variable
+//NewPing ultrasonic(trig, echo); //defines a new ultrasonic variable
 Adafruit_SSD1306 oled = Adafruit_SSD1306(128,64,&Wire,-1);
 //LiquidCrystal_I2C lcd(0x3F, 16, 2); // I2C address 0x27, 16 column and 2 rows
 RF24 radio(8, 9);  //defines a new radio variable CE, CSN respectively
@@ -83,16 +83,17 @@ Servo gate_servo;
 //const int buttonPin[] = {31, 32, 33, 34};     // the number of the pushbutton pins
 
 
-int Threshold = 100;
+int Threshold = 150;
 int IR_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
 int IR_Bin_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 double IR_weights[8] = {-16, -8, -4, -2, 2, 4, 8, 16};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
+double IR_weights[8] = {-8, -4, -2, -1, 1, 2, 4, 8};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
 
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
 int speed_adjust = 0;
-int Left_MotorBase_speed = 100;//set 130;   //100 for maze
-int Right_MotorBase_speed = 100;//set 140; 
+int Left_MotorBase_speed = 80;//set 130;   //100 for maze
+int Right_MotorBase_speed = 105;//set 140; 
 int max_speed = 255;
 int min_speed = 30;
 
@@ -108,7 +109,7 @@ float Ki = 0;
 float P, D;
 float I = 0;   // I is again and again set to zero in pid_forward()
 
-int ir_to_wheels_dist = 35;//50  // encoder value 
+int ir_to_wheels_dist = 50;//50  // encoder value 
 
 float error = 0;
 float previousError = 0; //46
@@ -137,7 +138,7 @@ void set_forward();
 void forward();  // sets forward and go forward
 void pid_forward(int steps);  // go forward with pid output for a given number of steps
 void set_backword();
-void backword();
+void backward();
 void pid_backward(int steps);
 void turn_left();
 void turn_right(); // after turn left or turn right functions you need to specify the delay and then stop
@@ -156,7 +157,7 @@ void read_ir();
 void display_ir();
 void read_encoders();
 void line_follow();
-int measure_distance();
+float measure_distance();
 int read_color_sensor();
 void radio_send();
 int read_received_color_value();
@@ -164,9 +165,10 @@ void start_to_checkpoint1();
 void checkpoint1();
 void checkpoint_follow();
 void checkpoint1_to_();
-void _to_dotted_line();
+void _to_straight_path();
 void left_to_right();
 void right_to_left();
+void straight_path_to_dotted_line();
 void dotted_line_to_checkpoint2();
 void read_received_box_color();
 void checkpoint2_to_L_junction();
@@ -261,6 +263,7 @@ void setup()
   current_time = millis();
 
    read_ir();
+   measure_distance();
 }
 
 void loop()
@@ -272,11 +275,11 @@ void loop()
     current_time = millis();
   } 
    //start_to_checkpoint1();
-<<<<<<< HEAD
+
    stage=5;
    dotted_line_to_checkpoint2()
    delay(5000);
-=======
+
   // forward();
 
    stage=0;
@@ -284,8 +287,23 @@ void loop()
    //dotted_line_to_checkpoint2();
 //   unload_to_T_junction();
 //   delay(10000);
->>>>>>> f2597f9a164dcf64d71cc2e45ff63603d473515a
 //   checkpoint1();
+
+    //forward();
+
+    //line_follow();
+    read_ir();
+    stage=4;
+  // start_to_checkpoint1();
+//   Left_MotorBase_speed = 50;//set 130;   //100 for maze
+//   Right_MotorBase_speed = 60;//set 140; 
+ //  checkpoint1();
+//    Left_MotorBase_speed = 80;//set 130;   //100 for maze
+//   Right_MotorBase_speed = 80;//set 140;   
+//   checkpoint1_to_();
+//   _to_straight_path();
+//dotted_line_to_checkpoint2();  
+  //L_junction_to_box_pickup();
 }
 
 void set_rgb_color(int r, int g, int b)
@@ -339,7 +357,7 @@ void set_backword()
     digitalWrite(IN4, HIGH);
 }
 
-void backword()
+void backward()
 {
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, HIGH);
@@ -391,7 +409,7 @@ void turn_left_90()
   //-83, -51, -127, 13,-108, -94,   Encoder values
   //counter = 0;
   turn_left();
-  delay(500);  // will have to change the delay
+  delay(500);  // will have to change the delay // 500 for Base 100
   //stop();
   // digitalWrite(IN1, LOW);
   // digitalWrite(IN2, HIGH);
@@ -402,7 +420,7 @@ void turn_left_90()
     RMotorSpeed = Right_MotorBase_speed;
     motor_speed();
     read_ir();
-  } while (!(IR_Bin_val[5] == 0 && IR_Bin_val[4] == 0));  // changed 3 to 5
+  } while (!(IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0));  // changed 3 to 5
       stop();
       delay(50);
 }
@@ -442,7 +460,7 @@ void turn_right_90()
         RMotorSpeed = Right_MotorBase_speed;
         motor_speed();
         read_ir();
-    } while (!(IR_Bin_val[3] == 0 && IR_Bin_val[2] == 0));  //changed 4 to 2
+    } while (!(IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0));  //changed 4 to 2
     stop();
     delay(50);
 }
@@ -469,7 +487,7 @@ void turn_right_until_middle()
 void turn_right_90_using_delay()
 {
     turn_right();
-    delay(1000); // change the delay to change the amount turned
+    delay(750); // change the delay to change the amount turned
     stop();
     delay(50);
 }
@@ -496,7 +514,7 @@ void turn_left_180()
 void turn_left_90_using_delay()
 {
     turn_left();
-    delay(1000); // change the delay to change the amount turned
+    delay(750); // change the delay to change the amount turned
     stop();
     delay(50);
 }
@@ -639,11 +657,13 @@ void line_follow()
     motor_speed();
 }
 
-int measure_distance()
-{
-    int duration = ultrasonic.ping_median(); // sends out 5 pulses and takes the median duration
-    int distance = ultrasonic.convert_in(duration)*2.54;  // distance in centimeters
-    return distance;
+float measure_distance(){
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(12);
+  digitalWrite(trig, LOW);
+  float T=pulseIn(echo,HIGH);
+  float x=T/58.00;
+  return x;
 }
 
 int read_color_sensor()
@@ -774,6 +794,7 @@ void start_to_checkpoint1()
           oled.print("Stage 1 completed!");
           oled.display();
           Serial.println("Stage 1 completed!");
+          delay(100);
           stage+=1;
           break;
         }
@@ -871,120 +892,170 @@ void start_to_checkpoint1()
 }
 */
 
-void checkpoint1(){
+//void checkpoint1(){
+//  if (stage == 1)
+//  {
+//    //pid_forward(ir_to_wheels_dist);
+//    Serial.println("Turning right");
+//    turn_right_90_checkpoint();
+//    delay(100);
+//    set_forward();
+//    Serial.println("Checkpoint follow");
+//    IR_weights[3] = -1;
+//    IR_weights[4] = 1;
+//    while (!(IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1))
+//    {
+//      checkpoint_follow();
+//    }
+//    stop();
+//    delay(100);
+//    IR_weights[3] = 0;
+//    IR_weights[4] = 0;
+//    pid_forward(ir_to_wheels_dist);
+//    stop();
+//    delay(100);
+//    Serial.println("Turning left");
+//    turn_left_90();
+//    delay(100);
+//    set_forward();
+//    Serial.println("Checkpoint follow");
+//    IR_weights[3] = -1;
+//    IR_weights[4] = 1;
+//    while (!(IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
+//    {
+//      checkpoint_follow();
+//    }
+//    stop();
+//    delay(100);
+//    IR_weights[3] = 0;
+//    IR_weights[4] = 0;
+//    forward();
+//    delay(t);
+//    stop();
+//    delay(100);
+//    Serial.println("Turning to small robot path");
+//    turn_right_90();
+//    delay(140);
+//    Serial.println("Forward in small robot path");
+//    pid_forward(100);
+//    stop();
+//    delay(100);
+//    Serial.println("Turning 180");
+//    turn_left_180();
+//    delay(100);
+//    Serial.println("Line Follow");
+//    set_forward();
+//    while (!(IR_Bin_val[0]==0 && IR_Bin_val[1]==0 && IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0 && IR_Bin_val[6]==0 && IR_Bin_val[7]==0))
+//    {
+//      line_follow();
+//    }
+//    stop();
+//    delay(100);
+//    Serial.println("Gate down");
+//    gate_down();
+//    Serial.println("Radio sent");
+//    radio_send();
+//    delay(100);
+//    Serial.println("Gate up");
+//    gate_up();
+//    //wait untill the smaller robot gets off
+//
+//    pid_forward(ir_to_wheels_dist);
+//    stop();
+//    delay(100);
+//    Serial.println("Turn right 90");
+//    turn_right_90_checkpoint();
+//    delay(100);
+//    set_forward();
+//    Serial.println("Checkpoint follow");
+//    IR_weights[3] = -1;
+//    IR_weights[4] = 1;
+//    while (!(IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1))
+//    {
+//      checkpoint_follow();
+//    }
+//    stop();
+//    delay(100);
+//    IR_weights[3] = 0;
+//    IR_weights[4] = 0;
+//    forward();
+//    delay(t);
+//    stop();
+//    delay(100);
+//    Serial.println("Turn left 90");
+//    turn_left_90_checkpoint();
+//    delay(100);
+//    set_forward();
+//    Serial.println("Checkpoint follow");
+//    IR_weights[3] = -1;
+//    IR_weights[4] = 1;
+//    while (!(IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
+//    {
+//      checkpoint_follow();
+//    }
+//    stop();
+//    delay(100);
+//    IR_weights[3] = 0;
+//    IR_weights[4] = 0;
+//    forward();
+//    delay(t);
+//    stop();
+//    delay(100);
+//    Serial.println("Turning right");
+//    turn_right_90();
+//    delay(100);
+//    stage+=1;
+//    
+//  }
+//}
+
+void checkpoint1()
+{
   if (stage == 1)
   {
-    //pid_forward(ir_to_wheels_dist);
-    Serial.println("Turning right");
-    turn_right_90_checkpoint();
-    delay(100);
-    set_forward();
-    Serial.println("Checkpoint follow");
-    IR_weights[3] = -1;
-    IR_weights[4] = 1;
-    while (!(IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1))
+    while (true)
     {
-      checkpoint_follow();
+      if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){  // && IR_Bin_val[2] == 1  IR_Bin_val[5] == 0 && 
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Right Junction");
+        oled.display();
+        Serial.println("We are at a right junction");
+        stop();
+        delay(100);
+        //pid_forward(ir_to_wheels_dist);
+        gate_down();
+        delay(10000);
+        gate_up();
+        delay(1000);
+        forward();
+        delay(t);
+        stop();
+        delay(100);
+        oled.setCursor(0, 16);
+        oled.print("Turning right");
+        oled.display();
+        Serial.println("Turning right");
+        turn_right_90();
+        delay(100);
+        stage+=1;
+        break;
+      }
+      else{
+        if ((millis() - current_time) > 1000){
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Moving Forward");
+          oled.display();
+          Serial.println("Moving Forward");
+          current_time = millis();
+        }
+        //Serial.println("Moving Forward");
+        set_forward();
+        line_follow();
+        //pid_forward(15);      
+      }
     }
-    stop();
-    delay(100);
-    IR_weights[3] = 0;
-    IR_weights[4] = 0;
-    pid_forward(ir_to_wheels_dist);
-    stop();
-    delay(100);
-    Serial.println("Turning left");
-    turn_left_90();
-    delay(100);
-    set_forward();
-    Serial.println("Checkpoint follow");
-    IR_weights[3] = -1;
-    IR_weights[4] = 1;
-    while (!(IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
-    {
-      checkpoint_follow();
-    }
-    stop();
-    delay(100);
-    IR_weights[3] = 0;
-    IR_weights[4] = 0;
-    forward();
-    delay(t);
-    stop();
-    delay(100);
-    Serial.println("Turning to small robot path");
-    turn_right_90();
-    delay(140);
-    Serial.println("Forward in small robot path");
-    pid_forward(100);
-    stop();
-    delay(100);
-    Serial.println("Turning 180");
-    turn_left_180();
-    delay(100);
-    Serial.println("Line Follow");
-    set_forward();
-    while (!(IR_Bin_val[0]==0 && IR_Bin_val[1]==0 && IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0 && IR_Bin_val[6]==0 && IR_Bin_val[7]==0))
-    {
-      line_follow();
-    }
-    stop();
-    delay(100);
-    Serial.println("Gate down");
-    gate_down();
-    Serial.println("Radio sent");
-    radio_send();
-    delay(100);
-    Serial.println("Gate up");
-    gate_up();
-    //wait untill the smaller robot gets off
-
-    pid_forward(ir_to_wheels_dist);
-    stop();
-    delay(100);
-    Serial.println("Turn right 90");
-    turn_right_90_checkpoint();
-    delay(100);
-    set_forward();
-    Serial.println("Checkpoint follow");
-    IR_weights[3] = -1;
-    IR_weights[4] = 1;
-    while (!(IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1))
-    {
-      checkpoint_follow();
-    }
-    stop();
-    delay(100);
-    IR_weights[3] = 0;
-    IR_weights[4] = 0;
-    forward();
-    delay(t);
-    stop();
-    delay(100);
-    Serial.println("Turn left 90");
-    turn_left_90_checkpoint();
-    delay(100);
-    set_forward();
-    Serial.println("Checkpoint follow");
-    IR_weights[3] = -1;
-    IR_weights[4] = 1;
-    while (!(IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
-    {
-      checkpoint_follow();
-    }
-    stop();
-    delay(100);
-    IR_weights[3] = 0;
-    IR_weights[4] = 0;
-    forward();
-    delay(t);
-    stop();
-    delay(100);
-    Serial.println("Turning right");
-    turn_right_90();
-    delay(100);
-    stage+=1;
-    
   }
 }
 
@@ -1218,9 +1289,14 @@ void straight_path_to_dotted_line()
   {
     current_time = millis();
     String side = "L";
+    measure_distance();
+    delay(20);
     while (true) {
       read_ir();
-      if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0) && (IR_Bin_val[5] == 1 && IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
+      float x = measure_distance();
+      Serial.println(x);
+      
+      if ((IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0) && (IR_Bin_val[6] == 1 && IR_Bin_val[7] == 1)) {
         oled.clearDisplay(); 
         oled.setCursor(0, 0);
         oled.print("Left Junction");
@@ -1237,7 +1313,7 @@ void straight_path_to_dotted_line()
         oled.print("Turning Right");
         oled.display();
         Serial.println("Turning Right");
-        turn_right_90();
+        turn_right_until_middle();
         stop();
         delay(100);
         oled.clearDisplay(); 
@@ -1247,7 +1323,7 @@ void straight_path_to_dotted_line()
         stage += 1;
         break;
       } 
-      else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
+      else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1) && (IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))   //IR_Bin_val[5] == 0 && 
       {
         oled.clearDisplay(); 
         oled.setCursor(0, 0);
@@ -1265,7 +1341,7 @@ void straight_path_to_dotted_line()
         oled.setCursor(0, 16);
         oled.print("Turning left");
         oled.display();
-        turn_left_90();
+        turn_left_until_middle();
         stop();
         delay(100); 
         oled.clearDisplay(); 
@@ -1306,32 +1382,32 @@ void straight_path_to_dotted_line()
       //   //Serial.println("Turning right");
       //   turn_left_90();
       // }
-//      else if(measure_distance() < 7 && side == "L")
-//      {
-//        oled.clearDisplay(); 
-//        oled.setCursor(0, 0);
-//        oled.print("Obstacle found");
-//        oled.display();
-//        Serial.println("Obstacle Found");
-//        stop();
-//        delay(100);
-//        turn_right_90_using_delay();
-//        delay(100);
-//        left_to_right();
-//        
-//        side = "R";
-//      }
-//      else if(measure_distance() < 7 && side == "R")
-//      {
-//        oled.clearDisplay(); 
-//        oled.setCursor(0, 0);
-//        oled.print("Obstacle found");
-//        stop();
-//        delay(50);
-//        turn_left_90_using_delay();
-//        right_to_left();
-//        side = "L";
-//      }
+      else if(x< 7 && side == "L")
+      {
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Obstacle found");
+        oled.display();
+        Serial.println("Obstacle Found");
+        stop();
+        delay(100);
+        turn_right_90_using_delay();
+        delay(100);
+        left_to_right();
+        
+        side = "R";
+      }
+      else if(x < 7 && side == "R")
+      {
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Obstacle found");
+        stop();
+        delay(50);
+        turn_left_90_using_delay();
+        right_to_left();
+        side = "L";
+      }
       else {
         if ((millis() - current_time) > 1000){
           oled.clearDisplay(); 
@@ -1344,6 +1420,7 @@ void straight_path_to_dotted_line()
         line_follow();
         //pid_forward(15);
       }
+      delay(10);
     }
 
   }
@@ -1369,7 +1446,7 @@ void left_to_right()
       oled.print("Turning Right");
       oled.display();
       Serial.println("Turning Right");
-      turn_right_90();
+      turn_left_90();
       delay(100);
       break;
     }
@@ -1398,7 +1475,7 @@ void right_to_left()
       oled.setCursor(0, 16);
       oled.print("Turning Left");
       oled.display();
-      turn_left_90();
+      turn_right_90();
       delay(100);
       break;
     }
@@ -1544,9 +1621,13 @@ void L_junction_to_box_pickup()
   if (stage == 7)
   {
     current_time = millis();
-    while (true)
+    measure_distance();
+    delay(20);
+    while(true)
     {
-      if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
+      float x = measure_distance();
+      Serial.println(x);
+      if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1) && (IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){   // IR_Bin_val[2]==1 IR_Bin_val[5]==0
         oled.clearDisplay(); 
         oled.setCursor(0, 0);
         oled.print("Right Junction");
@@ -1555,7 +1636,7 @@ void L_junction_to_box_pickup()
         stop();
         delay(100);
         forward();
-        delay(t);
+        delay(t-50);
         stop();
         delay(100); 
         oled.setCursor(0, 16);
@@ -1565,9 +1646,45 @@ void L_junction_to_box_pickup()
         turn_right_90();
         stop();
         delay(100);
+        for (int i=0;i<2;i++)
+        {
+          set_forward();
+          while (measure_distance()>5)
+          {
+            line_follow();
+            delay(10);
+          }
+          stop();
+          delay(100);
+          while (!(IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0))
+          {
+            read_ir();
+            backward();
+          }
+          stop();
+          delay(100);
+        }
+      }
+      else if (x<7){
+        stop();
+        delay(100);
+        Serial.println("Arm Down");
         arm_down();
+        delay(100);
         if (color == read_color_sensor())
         {
+          stop();
+          delay(100);
+          while (!(IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0))
+          {
+            read_ir();
+            backward();
+          }
+          stop();
+          delay(100);
+          pid_forward(ir_to_wheels_dist);
+          stop();
+          delay(100);
           turn_left_90();
           stop();
           delay(100);
@@ -1577,11 +1694,23 @@ void L_junction_to_box_pickup()
         else
         {
           arm_up();
+          stop();
+          delay(100);
+          while (!(IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0))
+          {
+            read_ir();
+            backward();
+          }
+          stop();
+          delay(100);
+          pid_forward(ir_to_wheels_dist);
+          stop();
+          delay(100);
           turn_left_90();
           stop();
           delay(100);
-        }
-      }
+        } 
+      }    
       else
       {
         if ((millis() - current_time) > 1000){
@@ -1589,12 +1718,14 @@ void L_junction_to_box_pickup()
           oled.setCursor(0, 0);
           oled.print("Moving Forward");
           oled.display();
+          Serial.println("Moving Forward");
           current_time = millis();
         }
         //Serial.println("Moving Forward");
         set_forward();
-        line_follow();        
-      }      
+        line_follow();
+      }   
+      delay(20);
     }
   }
 }
@@ -1893,26 +2024,34 @@ void T_junction_to_finish()
 
 void gate_down()
 {
-  gate_servo.write(180);
-  delay(100);
+for(int i=100;i>=10;i-=20){
+  gate_servo.write(i);     
+  delay(500);
+  }
 }
 
 void gate_up()
 {
-  gate_servo.write(0);
-  delay(100);
+for(int i=10;i<=100;i+=30){
+  gate_servo.write(i);     
+  delay(50);
+  }
 }
 
 void arm_down()
 {
-  arm_servo.write(90);
-  delay(100);
+for(int i=180;i>=78;i-=1){
+  arm_servo.write(i);     
+  delay(5);
+  }
 }
 
 void arm_up()
 {
-  arm_servo.write(0);
-  delay(100);
+ for(int i=78;i<=180;i+=1){
+   arm_servo.write(i);     
+   delay(10);
+ }
 }
 
 // void menu(){
