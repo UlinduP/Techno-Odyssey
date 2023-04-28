@@ -585,7 +585,7 @@ int measure_distance(){
 // color sensor functions
 int read_color_sensor(){
   int i=0;
-  int R_val=0,G_val=0,B_val=0,O_val =0;
+  int R_val=0,G_val=0,B_val=0,O_val =0,W_val=0;
   do{ 
     // looking for red value
     digitalWrite(S2,LOW);
@@ -602,9 +602,10 @@ int read_color_sensor(){
     digitalWrite(S3,HIGH);
     bluefrequency = pulseIn(sensorOut, LOW);
   
-    if (redfrequency>250 && redfrequency <289) R_val++;
-    else if (greenfrequency>260 && greenfrequency <300) G_val++;
-    else if (bluefrequency>310 && bluefrequency <350) B_val++;
+    if ((redfrequency>30 && redfrequency <95) && (bluefrequency>60 && bluefrequency<123) && (greenfrequency>80 && greenfrequency<160)) R_val++;
+    else if ((redfrequency>110 && redfrequency <190) && (bluefrequency>80 && bluefrequency<165) && (greenfrequency>70 && greenfrequency<180)) G_val++;
+    else if ((redfrequency>130 && redfrequency <240) && (bluefrequency>40 && bluefrequency<110) && (greenfrequency>90 && greenfrequency<190)) B_val++;
+    else if (bluefrequency<100 && redfrequency<100 && greenfrequency<100) W_val++;
     else O_val++;
     i++;
   }
