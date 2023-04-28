@@ -100,7 +100,7 @@ double IR_weights[8] = {-4,-3, -2, 0, 0, 2, 3,4};//{-5000, -2000, -1000, 1000, 2
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
 int speed_adjust = 0;
-int Left_MotorBase_speed = 150;  //60
+int Left_MotorBase_speed = 167;  //60
 int Right_MotorBase_speed = 150;
 int max_speed = 255;
 int min_speed = 50 ;
@@ -139,9 +139,9 @@ float previousErrorb= 0; //46
 //slow back pid
 
 //turn delays
-int dR90 = 700;
-int dL90 = 700;
-int dL180 = 1400;
+int dR90 = 500;
+int dL90 = 500;
+int dL180 = 1000;
 
 
 

@@ -646,7 +646,7 @@ int read_color_sensor()
     if(R_val>40) return 1;
     else if (G_val>40) return 2;
     else if (B_val>40) return 3;
-    else if (W_val>40) return 4
+    else if (W_val>40) return 4;
     else return 5;
 }
 

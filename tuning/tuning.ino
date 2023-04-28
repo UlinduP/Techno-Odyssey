@@ -85,16 +85,16 @@ String lastLine = "";
 //const int buttonPin[] = {31, 32, 33, 34};     // the number of the pushbutton pins
 
 
-int Threshold = 100;
+int Threshold = 150;
 int IR_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
 int IR_Bin_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-double IR_weights[8] = {-8, -4, -2, 0, 0, 2, 4, 8};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
+double IR_weights[8] = {-15,-6,-2,-1,1,2,6,15};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
 
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
 int speed_adjust = 0;
 int Left_MotorBase_speed = 80; // base 110
-int Right_MotorBase_speed = 80;   // limit 80   // base 90
+int Right_MotorBase_speed = 105;   // limit 80   // base 90
 int max_speed = 255;
 int min_speed = 30;
 
@@ -279,61 +279,61 @@ void setup()
 
 void loop()
 {
-  //update_btns();
+  update_btns();
 
-//  if((millis()-current_time)>1000){
-//    oled.clearDisplay();
-//    oled.setCursor(0,0);
-//    read_ir();
-//    display_ir();
-//    current_time = millis();
-//  } 
-  // start_to_checkpoint1();
-  //line_follow();
+ if((millis()-current_time)>1000){
+   oled.clearDisplay();
+   oled.setCursor(0,0);
+   read_ir();
+   display_ir();
+   current_time = millis();
+ } 
+  start_to_checkpoint1();
+  line_follow();
 
-  //menu access long press 4 to access menu
-//  if(ks4 == true){
-//    stop();
-//    delay(500);
-//    update_btns();
-//    if(ks4 == true){
-//      for(int i =0; i < 3; i++){
-//        //horn(200);
-//        delay(300);
-//      }
-     // menu();
-    //}//else{
-      //horn(400); //use this to on or off something
-      // set_forward();
-      //continue;
-    //}
- // }
+  menu access long press 4 to access menu
+ if(ks4 == true){
+   stop();
+   delay(500);
+   update_btns();
+   if(ks4 == true){
+     for(int i =0; i < 3; i++){
+       //horn(200);
+       delay(300);
+     }
+     menu();
+    }//else{
+      horn(400); //use this to on or off something
+      set_forward();
+      continue;
+    }
+ }
 
-// state manager
-//  if(state == "stop"){
-//    display_lcd("Stopped");
-//    stop();
-//  }else if(state == "line follow"){  //"kpkd"
-//    display_lcd("line follow");
-//    set_forward();
-//    line_follow();
-//    
-//  }else if (state == "PID"){
-//    change_forward_pid();
-//     //line_follow();
-//  }else if(state == "change speed"){
-//        change_speed();
-  // }else if (state == "detect_junc"){
-  //   jun_det_line_follow();
-  // }else if(state == "get distance"){
-  //   mes_dis_travel();
-  // }else if (state == "turn 90"){
-  //   det_jun_turn_90();
-  // }else if(state == "turn 180"){
-  //   turn_180();
-  // }else if(state == "ultra"){
-  //   //add code to run gate detection
-  // }
+state manager
+ if(state == "stop"){
+   display_lcd("Stopped");
+   stop();
+ }else if(state == "line follow"){  //"kpkd"
+   display_lcd("line follow");
+   set_forward();
+   line_follow();
+   
+ }else if (state == "PID"){
+   change_forward_pid();
+    //line_follow();
+ }else if(state == "change speed"){
+       change_speed();
+  }else if (state == "detect_junc"){
+    jun_det_line_follow();
+  }else if(state == "get distance"){
+    mes_dis_travel();
+  }else if (state == "turn 90"){
+    det_jun_turn_90();
+  }else if(state == "turn 180"){
+    turn_180();
+  }else if(state == "ultra"){
+    //add code to run gate detection
+  }
   
 }
 
