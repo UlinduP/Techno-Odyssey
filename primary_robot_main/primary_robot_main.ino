@@ -2029,13 +2029,18 @@ void unload_to_T_junction()
 void waiting_for_go()
 {
   if (stage==12){
-  radio.startListening();
-  while(!radio.available()) 
-  {
-    continue;
-  }
-  radio.stopListening();
-  stage+=1;
+    radio.startListening();
+    int evans = 0;
+    while (evans != 100)
+    {
+      if (radio.available())
+        {
+          radio.read(&evans, sizeof(evans));
+          Serial.println(evans);
+        }
+        //delay(1000);
+      }
+    stage+=1;
   }
 }
 
@@ -2107,6 +2112,9 @@ void _to_obstacle()
         stop();
         delay(100);
         turn_right_until_middle();
+        forward();
+        delay(100);
+        stop();
         delay(100);
       }
       else
@@ -2122,7 +2130,7 @@ void _to_obstacle()
         set_forward();
         line_follow(); 
       }
-      delay(10);
+      delay(20);
       x=measure_distance();
   }
   stage+=1;
@@ -2146,7 +2154,9 @@ void obstacle_to_()
         turn_right_until_middle();
         delay(100);
         stage+=1;
+        break;
       }
+    }
   }
 }
 
@@ -2186,6 +2196,8 @@ void _to_finish()
         oled.setCursor(0,0);
         oled.print("All Tasks Done!!!");
         oled.display();
+        forward();
+        delay(600);
         tone(buzzer,1000);
         delay(1000);
         noTone(buzzer);
@@ -2245,6 +2257,8 @@ void _to_finish()
         tone(buzzer,1000);
         delay(1000);
         noTone(buzzer);
+        forward();
+        delay(600);
         stage+=1;
         break;}
       }
