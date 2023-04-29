@@ -99,8 +99,8 @@
   int LMotorSpeed = 0;
   int RMotorSpeed = 0;
   int speed_adjust = 0;
-  int Left_MotorBase_speed = 167;  //167
-  int Right_MotorBase_speed = 150 ;    //150
+  int Left_MotorBase_speed =167;//  
+  int Right_MotorBase_speed =150;//    
   int max_speed = 255;
   int min_speed = 50 ;
 
@@ -110,8 +110,8 @@
   int bluefrequency = 0;
 
   //front values
-  float Kp = 25;  //22,0 wada//80 //25
-  float Kd = 10; // 8//50 //10
+  float Kp = 38;//25;  //22,0 wada//80 //25
+  float Kd = 0.005;//10; // 8//50 //10
   float Ki = 0;
 
   float P, D;
@@ -184,10 +184,13 @@
 
   //not included in the code
   void start_command();
+  void _to_checkpoint1();
   void checkpoint_one_to_gate_A();
   void gate_A_to_vault();
   void vault_to_ramp_junction();
+  void ramp_junction_to_ramp_start();
   void ramp_start_to_gate_B();
+  void ramp();
   void gate_B_to_ramp_end();
   void ramp_end_to_T();
   void send_obstacle_removed();
@@ -196,6 +199,8 @@
   void pole_junction_to_pole();
   void pole_to_pole_junction();
   void pole_junction_to_finish();
+
+  void checkpoint_follow();
 
   //functions--RuchchaSD
   String read_Serial(); //get String sent through serial
@@ -242,6 +247,7 @@
   int t = 350;
 
   int t1 = 0, t2 = 0;
+  int idx;
   void setup() {
     //          Actuators // Set all the motor control pins to outputs
     pinMode(ENA, OUTPUT);
@@ -277,7 +283,7 @@
   radio.begin();
   radio.startListening();
   radio.openWritingPipe(address[0]); //00001
-  radio.openReadingPipe(1, addresses[1]);  //00002
+  radio.openReadingPipe(1, address[1]);  //00002
   radio.setPALevel(RF24_PA_MIN);
   radio.setDataRate(RF24_250KBPS);
 
@@ -317,11 +323,52 @@
   //   stop();
   //   delay(100000);
 
-  stage = -1;
-  }
+  stage = 0;
+}
 
 
 void loop() {
+  backward();
+  delay(10);
+  forward();
+  delay(10);
+  // read_ir();
+  // if (IR_Bin_val[0] == 1 || IR_Bin_val[1] == 1 || IR_Bin_val[2] == 1 || IR_Bin_val[3] == 1 || IR_Bin_val[4] == 1 || IR_Bin_val[5] == 1 || IR_Bin_val[6] == 1 || IR_Bin_val[7] == 1)
+  //     {
+  //       for (int i = 0; i < 8; i++)
+  //       {
+  //         if (IR_Bin_val[i] == 1)
+  //         {
+  //           idx = i;
+  //         }
+  //       }
+
+  //       if (idx < 3)
+  //       {
+  //         stop();
+  //       digitalWrite(IN1, LOW);
+  // digitalWrite(IN2, LOW);
+  // digitalWrite(IN3, LOW);
+  // digitalWrite(IN4, LOW);
+  // digitalWrite(ENA, HIGH);
+  // digitalWrite(ENB, HIGH);
+  //         //delay(100);
+  //         //turn_right_until_middle();
+  //         //delay(100);
+  //       }
+
+  //       else if (idx > 3)
+  //       {
+  //         stop();
+  //         //delay(100);
+  //         //turn_left_until_middle();
+  //         //delay(100);
+  //       }}
+
+
+
+  //backward();
+  //line_follow();
   // things to do in an every cycle
   //  update_btns();
 
@@ -363,19 +410,25 @@ void loop() {
   //   //execute the command
   // }
 
-start_command();
-checkpoint_one_to_gate_A();
-gate_A_to_vault();
-vault_to_ramp_junction();
-ramp_start_to_gate_B();
-gate_B_to_ramp_end();
-ramp_end_to_T();
-send_obstacle_removed();
-T_to_ramp_end();
-ramp_end_to_pole_junction();
-pole_junction_to_pole();
-pole_to_pole_junction();
-pole_junction_to_finish();
+// start_command();
+// _to_checkpoint1();
+//  checkpoint_one_to_gate_A();
+//  gate_A_to_vault();
+//  vault_to_ramp_junction();
+//   ramp_junction_to_ramp_start();
+//  ramp_start_to_gate_B();
+// // ramp();
+//  gate_B_to_ramp_end();
+// ramp_end_to_T();
+// //send_obstacle_removed();
+//  T_to_ramp_end();
+// ramp_end_to_pole_junction();
+// pole_junction_to_pole();
+//  pole_to_pole_junction();
+//  pole_junction_to_finish();
+
+// backward();
+// delay(500);
 
 //delay(1000000);
 //line_follow();
@@ -850,17 +903,20 @@ void backward(int Left, int Right) {
 }
 
 void pid_forward(int count) {
-  I = 0;
-  set_forward();
-  line_follow();
-  if (count > 0) {
-    for (int i = 0; i < count; i++) {
+    I = 0;
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, LOW);
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, LOW);
+    //encoder_pos = 0;
+    // while (encoder_pos < target){do this}
+    for (int i=0;i<count;i++){
+      read_ir();
       line_follow();
-      delay(2);
-      stop();
+      //delay(2);
     }
-
-  }
+    stop();
+    delay(2);
 }
 
 void pid_backword(int count) {
@@ -1277,7 +1333,7 @@ void radio_send()
 
 void start_command()
 {
-  if (stage==-1)
+  if (stage==0)
   {
     radio.startListening();
     while(!radio.available()) 
@@ -1287,6 +1343,145 @@ void start_command()
     radio.stopListening();
     stage+=1;
   }
+}
+
+void _to_checkpoint1()
+{
+  if (stage == 1)
+  {
+    read_ir();
+    while (!(IR_Bin_val[0]==1 && IR_Bin_val[1]==1 && IR_Bin_val[2]==1 && IR_Bin_val[3]==1 && IR_Bin_val[4]==1 && IR_Bin_val[5]==1 && IR_Bin_val[6]==1 && IR_Bin_val[7]==1))
+    {
+      line_follow();
+    }
+    stop();
+    delay(100);
+    forward();
+    delay(t);
+    stop();
+    delay(100);
+    turn_left_180();
+
+    for (int i=0;i<2;i++)
+    {
+      while (!(IR_Bin_val[0]==1 && IR_Bin_val[1]==1 && IR_Bin_val[2]==1 && IR_Bin_val[3]==1 && IR_Bin_val[4]==1 && IR_Bin_val[5]==1 && IR_Bin_val[6]==1 && IR_Bin_val[7]==1))
+      {
+        line_follow();
+      }
+      stop();
+      delay(100);
+      backward();
+      delay(500);
+    }
+    
+    while (!(IR_Bin_val[0]==1 && IR_Bin_val[1]==1 && IR_Bin_val[2]==1 && IR_Bin_val[3]==1 && IR_Bin_val[4]==1 && IR_Bin_val[5]==1 && IR_Bin_val[6]==1 && IR_Bin_val[7]==1))
+      {
+        line_follow();
+      }
+    forward();
+    delay(t);
+    
+    while (IR_Bin_val[3]!=0)
+    {
+      turn_right();
+    }
+
+    while (!(IR_Bin_val[0]==0 && IR_Bin_val[1]==0 && IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0 && IR_Bin_val[6]==0 && IR_Bin_val[7]==0))
+    {
+      checkpoint_follow();
+    }
+
+    for (int i=0;i<2;i++){
+      backward();
+      delay(500);
+
+      while (!(IR_Bin_val[0]==0 && IR_Bin_val[1]==0 && IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0 && IR_Bin_val[6]==0 && IR_Bin_val[7]==0))
+      {
+        checkpoint_follow();
+      }
+
+    }
+
+    forward();
+    delay(t);
+
+    while(IR_Bin_val[3]==0)
+    {
+      turn_right();
+    }
+
+    for (int i=0;i<2;i++)
+    {
+      while (!(IR_Bin_val[0]==1 && IR_Bin_val[1]==1))
+      {
+        checkpoint_follow();
+      }
+
+      backward();
+      delay(500);
+    }
+
+    while (!(IR_Bin_val[0]==1 && IR_Bin_val[1]==1))
+    {
+      checkpoint_follow();
+    }
+
+    forward();
+    delay(t);
+
+    turn_right_90();
+
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Entered the small robot path");
+    stage+=1;
+
+
+  }
+}
+
+void checkpoint_follow()
+{
+    read_ir();
+    for (int i = 0; i < 8; i++)
+        {
+        if (i>4 || i==3)
+        {
+          error += IR_weights[i] * (!IR_Bin_val[i]);  //IR_Bin_val
+        }
+        else{
+          error += IR_weights[i] * IR_Bin_val[i];
+        }
+        }
+
+    P = error;
+    I = I + error;
+    D = error - previousError;
+
+    previousError = error;
+
+    speed_adjust = Kp * P + Ki * I + Kd * D;
+    LMotorSpeed = Left_MotorBase_speed - speed_adjust;
+    RMotorSpeed = Right_MotorBase_speed + speed_adjust;
+
+    if (LMotorSpeed < min_speed)
+        {
+        LMotorSpeed = min_speed;
+        }
+    if (RMotorSpeed < min_speed)
+        {
+        RMotorSpeed = min_speed;
+        }
+    if (LMotorSpeed > max_speed)
+        {
+        LMotorSpeed = max_speed;
+        }
+    if (RMotorSpeed > max_speed)
+        {
+        RMotorSpeed = max_speed;
+        }
+    
+    motor_speed();
 }
 
 void checkpoint_one_to_gate_A()
@@ -1518,7 +1713,7 @@ void vault_to_ramp_junction()
   }
 }
 
-void ramp_start_to_gate_B()
+void ramp_junction_to_ramp_start()
 {
   if (stage == 3)
   {
@@ -1536,19 +1731,124 @@ void ramp_start_to_gate_B()
     }
     stop();
     delay(100);
+    pid_forward(500);
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Up the ramp");
+    stage += 1;
+  } 
+}
+
+void ramp_start_to_gate_B()
+{
+  if (stage == 4)
+  {
+    measure_distance();
+    delay(20);
+    //int idx;
+    float x= measure_distance();
+    set_forward();
+    Left_MotorBase_speed = 255;  // higher speed for going up the hill
+    Right_MotorBase_speed = 255;
+    while (x > 8)
+    {
+      line_follow();
+      delay(20);
+      x=measure_distance();
+    }
+    stop();
+    delay(100);
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Gate B");
     stage += 1;
   }
+
+
+//  if (IR_Bin_val[0] == 1 || IR_Bin_val[1] == 1 || IR_Bin_val[2] == 1 || IR_Bin_val[3] == 1 || IR_Bin_val[4] == 1 || IR_Bin_val[5] == 1 || IR_Bin_val[6] == 1 || IR_Bin_val[7] == 1)
+//       {
+//         for (int i = 0; i < 8; i++)
+//         {
+//           if (IR_Bin_val[i] == 1)
+//           {
+//             idx = i;
+//           }
+//         }
+
+//         if (idx < 3)
+//         {
+//           lcd.clear();
+//           lcd.setCursor(0, 0);
+//           lcd.print("Line on right");
+//           Serial.println("Line on right");
+//           stop();
+//           delay(100);
+//           turn_right_until_middle();
+//           delay(100);
+//         }
+
+//         else if (idx > 3)
+//         {
+//           lcd.clear();
+//           lcd.setCursor(0, 0);
+//           lcd.print("Line on left");
+//           Serial.println("Line of left");
+//           stop();
+//           delay(100);
+//           turn_left_until_middle();
+//           delay(100);
+//         }
+//       }
+
 }
+
+void ramp()
+{
+  measure_distance();
+  delay(20);
+  float x = measure_distance();
+  if (stage == 5 && x > 20)
+  {
+    set_forward();
+    Left_MotorBase_speed = 167;  // higher speed for going up the hill
+    Right_MotorBase_speed = 150;
+    
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("pid_forward");
+      pid_forward(100);
+      stop();
+      delay(100);
+      turn_left_180();
+      delay(100);
+
+      for (int i=0;i<3;i++)
+      {
+
+        line_follow();
+        delay(500);
+        stop();
+        delay(100);
+
+        backward();
+        delay(500);
+        stop();
+        delay(100);}
+    Left_MotorBase_speed = 60;  // higher speed for going up the hill
+    Right_MotorBase_speed = 60;      
+    backward();
+    delay(1000);
+    stage+=1;
+    }
+  }
+
 
 void gate_B_to_ramp_end()  //hari
 {
   measure_distance();
   delay(20);
   float x = measure_distance();
-  if (stage == 4 && x > 8)
+  if (stage == 5 && x > 8)
   {
     Left_MotorBase_speed = 80;  // lower speed for coming down the hill
     Right_MotorBase_speed = 80;
@@ -1577,7 +1877,7 @@ void gate_B_to_ramp_end()  //hari
 
 void ramp_end_to_T()  
 {
-  if (stage == 5)
+  if (stage == 6)
   { read_ir();
   set_forward();
     while (!(IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
@@ -1597,11 +1897,9 @@ void ramp_end_to_T()
   }
 }
 
-
-
 void T_to_ramp_end()
 {
-  if (stage == 6)
+  if (stage == 7)
   {
     read_ir();
     set_forward();
@@ -1624,6 +1922,9 @@ void T_to_ramp_end()
         lcd.clear();
         lcd.setCursor(0, 0);
         lcd.print("Ramp End");
+        forward();
+        delay(t);
+        turn_left_until_middle();
         stage += 1;
         break;
       }
@@ -1633,9 +1934,9 @@ void T_to_ramp_end()
 
 void ramp_end_to_pole_junction()
 {
-  if (stage == 7)
+  if (stage == 8)
   {
-    int temp=0;
+    //int temp=0;
     while (true)
     {
       read_ir();
@@ -1643,13 +1944,13 @@ void ramp_end_to_pole_junction()
       if (!(IR_Bin_val[6]==1 && IR_Bin_val[7]==1)){
          line_follow(); 
       }
-      else if(temp==2){
-        stage+=1;
-        lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("Pole Junction");
-        break;
-      }
+      // else if(temp==2){
+      //   stage+=1;
+      //   lcd.clear();
+      //   lcd.setCursor(0, 0);
+      //   lcd.print("Pole Junction");
+      //   break;
+      //}
       else{
         stop();
         delay(100);
@@ -1657,9 +1958,10 @@ void ramp_end_to_pole_junction()
         delay(t);
         stop();
         delay(100);
-        turn_left_90(300);
+        turn_left_90();
         delay(100);
-        temp+=1;
+        stage+=1;
+        break;
       }
     }
   }
@@ -1667,7 +1969,7 @@ void ramp_end_to_pole_junction()
 
 void pole_junction_to_pole()
 {
-  if (stage == 8)
+  if (stage == 9)
   {
     measure_distance();
     delay(20);
@@ -1708,7 +2010,7 @@ void pole_junction_to_pole()
 
 void pole_to_pole_junction()
 {
-  if (stage == 9)
+  if (stage == 10)
   {
     while (!(IR_Bin_val[7]==1 && IR_Bin_val[6]==1))
     {
@@ -1740,7 +2042,7 @@ void pole_to_pole_junction()
 
 void pole_junction_to_finish()
 {
-  if (stage == 10)
+  if (stage == 11)
   {
     read_ir();
     set_forward();

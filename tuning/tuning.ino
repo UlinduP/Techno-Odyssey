@@ -88,12 +88,12 @@ String lastLine = "";
 int Threshold = 150;
 int IR_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
 int IR_Bin_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-double IR_weights[8] = {-15,-6,-2,-1,1,2,6,15};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
+double IR_weights[8] = {-16,-6,-2,-1,1,2,6,16};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
 
 int LMotorSpeed = 0;
 int RMotorSpeed = 0;
 int speed_adjust = 0;
-int Left_MotorBase_speed = 80; // base 110
+int Left_MotorBase_speed = 85; // base 110
 int Right_MotorBase_speed = 105;   // limit 80   // base 90
 int max_speed = 255;
 int min_speed = 30;
@@ -103,8 +103,8 @@ int redfrequency = 0;
 int greenfrequency = 0;
 int bluefrequency = 0;
 
-float Kp = 0.05; //0.05 worked   //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
-float Kd = 105; //18 worked   // 85
+float Kp = 22.4; //0.05 worked   //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
+float Kd = 100; //18 worked   // 85
 float Ki = 0;
 
 float P, D;
@@ -220,7 +220,7 @@ void setup()
   pinMode(IN4, OUTPUT);
 
   //buzzer
-  pinMode(buzzerd, OUTPUT);
+  //pinMode(buzzerd, OUTPUT);
   //horn(-1);
 
   // initialize the keypad
@@ -268,13 +268,6 @@ void setup()
 
   set_forward();
   current_time = millis();
-  for (int i=0;i<=5;i++)
-  {
-    turn_left_90_using_delay();
-    delay(2000);
-    turn_right_90_using_delay();
-    delay(2000);
-  }
 }
 
 void loop()
@@ -288,10 +281,8 @@ void loop()
    display_ir();
    current_time = millis();
  } 
-  start_to_checkpoint1();
-  line_follow();
 
-  menu access long press 4 to access menu
+  //menu access long press 4 to access menu
  if(ks4 == true){
    stop();
    delay(500);
@@ -303,13 +294,13 @@ void loop()
      }
      menu();
     }//else{
-      horn(400); //use this to on or off something
-      set_forward();
-      continue;
-    }
+    //   horn(400); //use this to on or off something
+    //   set_forward();
+    //   continue;
+    // }
  }
 
-state manager
+//state manager
  if(state == "stop"){
    display_lcd("Stopped");
    stop();
@@ -323,17 +314,17 @@ state manager
     //line_follow();
  }else if(state == "change speed"){
        change_speed();
-  }else if (state == "detect_junc"){
-    jun_det_line_follow();
-  }else if(state == "get distance"){
-    mes_dis_travel();
-  }else if (state == "turn 90"){
-    det_jun_turn_90();
-  }else if(state == "turn 180"){
-    turn_180();
-  }else if(state == "ultra"){
-    //add code to run gate detection
-  }
+   }//else if (state == "detect_junc"){
+  //   jun_det_line_follow();
+  // }else if(state == "get distance"){
+  //   mes_dis_travel();
+  // }else if (state == "turn 90"){
+  //   det_jun_turn_90();
+  // }else if(state == "turn 180"){
+  //   turn_180();
+  // }else if(state == "ultra"){
+  //   //add code to run gate detection
+  // }
   
 }
 
@@ -504,10 +495,10 @@ void change_forward_pid(){//ui to change forward pid values
     update_btns();
     if(choice == 1){
       oled.clearDisplay();
-      Kp=Kp-0.01;
+      Kp--;
     }else if(choice==2){
       oled.clearDisplay();
-      Kp=Kp+0.01;
+      Kp++;
     }else if(choice == 3){
       oled.clearDisplay();
       Kd--;
@@ -968,6 +959,7 @@ void display_ir()
 void line_follow()
 {
     read_ir();
+    error=0;
     for (int i = 0; i < 8; i++)
         {
         error += IR_weights[i] * IR_Bin_val[i];  //IR_Bin_val
