@@ -101,8 +101,8 @@ int redfrequency = 0;
 int greenfrequency = 0;
 int bluefrequency = 0;
 
-float Kp = 22.04;  //60; for competition             //22.4//0.05 worked   //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
-float Kd = 85;  //200; for competition               //18 worked   // 85
+float Kp = 60;// for competition           (early 22.04;)             //22.4//0.05 worked   //0.3 // 3.05, 15, 0.001 for 43 max    // 1.875*0.3=0.5625 // 1.875 is what you need to utilize the full range  //12*0.25
+float Kd = 200;  //200; for competition   (early 85)              //18 worked   // 85
 float Ki = 0;
 
 float P, D;
@@ -120,7 +120,7 @@ int aLastState;
 int stage = 0;
 const byte address[][6] = {"00001","00002"};//the address to which the module should listen for incoming messages
 
-int color = 1;
+int color = -1;
 
 long current_time;
 
@@ -173,12 +173,13 @@ void dotted_line_to_checkpoint2();
 void read_received_box_color();
 void checkpoint2_to_L_junction();
 void L_junction_to_box_pickup();
-void box_pickup_to_();
-void _to_unload();
+void box_pickup_to_unload();
 void unload_to_T_junction();
 void waiting_for_go();
 void T_junction_to_();
 void _to_obstacle();
+void obstacle_to_();
+void _to_finish();
 void checkpoint_follow();
 void gate_down();
 void gate_up();
@@ -196,7 +197,7 @@ void setup()
   //initialize servos
   gate_servo.attach(gate_servo_pin);
   arm_servo.attach(arm_servo_pin);
-  arm_servo.write(85);   //85 down  //180 up
+  arm_servo.write(180);   //85 down  //180 up
   gate_servo.write(120);
 
   //initialize the oled
@@ -268,7 +269,7 @@ void setup()
   current_time = millis();
 
    read_ir();
-     stage=10;
+     stage=0;
 
 }
 
@@ -299,24 +300,26 @@ void loop()
 //   delay(1000000000000000);
 
 
-//      start_to_checkpoint1();
-//      checkpoint1();
-//      // t=330;
-//      checkpoint1_to_();
-//     _to_straight_path();
-//    straight_path_to_();
-//     _to_dotted_line();
-//     dotted_line_to_checkpoint2();
-//     read_received_box_color();
-//     checkpoint2_to_L_junction();
-    // L_junction_to_box_pickup();
-//    box_pickup_to_();
-//  _to_unload();
-// unload_to_T_junction();
-// waiting_for_go();
-//  T_junction_to_();
+     start_to_checkpoint1();
+     checkpoint1();
+     checkpoint1_to_();
+    _to_straight_path();
+   straight_path_to_();
+    _to_dotted_line();
+    dotted_line_to_checkpoint2();
+    read_received_box_color();
+    checkpoint2_to_L_junction();
+    L_junction_to_box_pickup();
+   box_pickup_to_unload();
+unload_to_T_junction();
+waiting_for_go();
+ T_junction_to_();
+ _to_obstacle();
+obstacle_to_();
+ _to_finish();
 
-temp();
+
+//temp();
 
 
 
@@ -922,7 +925,7 @@ void checkpoint1()
     while (true)
     {
       read_ir();
-      if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){  // && IR_Bin_val[2] == 1  IR_Bin_val[5] == 0 && 
+      if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1) && (IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){  // && IR_Bin_val[2] == 1  IR_Bin_val[5] == 0 && 
         oled.clearDisplay(); 
         oled.setCursor(0, 0);
         oled.print("Right Junction");
@@ -1506,7 +1509,7 @@ void dotted_line_to_checkpoint2()
       stop();
       delay(100);
       forward();
-      delay(500);
+      delay(700);
       stop();
       delay(100);
       stage+=1;
@@ -1598,6 +1601,7 @@ void L_junction_to_box_pickup()
 {
   if (stage == 9)
   {
+    int count = 0;
     current_time = millis();
     measure_distance();
     delay(20);
@@ -1605,8 +1609,9 @@ void L_junction_to_box_pickup()
     {
       read_ir();
       float x = measure_distance();
-      Serial.println(x);
+      //Serial.println(x);
       if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1) && (IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){   // IR_Bin_val[2]==1 IR_Bin_val[5]==0
+        count+=1;
         oled.clearDisplay(); 
         oled.setCursor(0, 0);
         oled.print("Right Junction");
@@ -1652,6 +1657,31 @@ void L_junction_to_box_pickup()
         Serial.println("Arm Down");
         arm_down();
         delay(100);
+        if (count == 4)
+        {
+          stop();
+          delay(100);
+          while (!(IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0))
+          {
+            read_ir();
+            backward();
+          }
+          stop();
+          delay(100);
+          forward();
+          delay(t);
+          stop();
+          delay(100);
+          turn_left_90();
+          stop();
+          delay(100);
+          oled.clearDisplay();
+          oled.setCursor(0,0);
+          oled.print("Box picked up");
+          oled.display();
+          stage+=1;
+          break;
+        }
         int a=read_color_sensor();
         delay(1000);
         oled.clearDisplay();
@@ -1722,7 +1752,7 @@ void L_junction_to_box_pickup()
   }
 }
 
-void temp()
+void box_pickup_to_unload()
 {
   if (stage == 10){
   current_time = millis();
@@ -1746,6 +1776,12 @@ void temp()
         float x=measure_distance();
         if (x>20){
           stop();
+          delay(100);
+          backward();
+          delay(t+200);
+          stop();
+          delay(100);
+          turn_left_180();
           delay(100);
           stage+=1;
           break;
@@ -1779,6 +1815,12 @@ void temp()
         if (x>20){
           stop();
           delay(100);
+          backward();
+          delay(t+200);
+          stop();
+          delay(100);
+          turn_left_until_middle();
+          delay(100);
           stage+=1;
           break;
         }
@@ -1808,6 +1850,12 @@ void temp()
         if (x>20){
           stop();
           delay(100);
+          backward();
+          delay(t+200);
+          stop();
+          delay(100);
+          turn_left_until_middle();
+          delay(100);
           stage+=1;
           break;
         }
@@ -1832,7 +1880,7 @@ void temp()
         line_follow(); 
       }
   } 
-}
+  }
 }
 
 // void box_pickup_to_()
@@ -1890,57 +1938,57 @@ void temp()
 //   }
 // }
 
-void _to_unload()
-{
-  if (stage == 11){
-  current_time = millis();
-  turn_right_until_middle();
-  stop();
-  delay(100);
-  read_ir();
-  while (true)
-  {
-    if (IR_Bin_val[1]==0 && IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0 && IR_Bin_val[6]==0)
-    {
-      Serial.println("Box Unloaded");
-      stop();
-      delay(100);
-      forward();
-      delay(200);
-      stop();
-      delay(200);
-      arm_up();
-      delay(300);
-      backward();
-      delay(t+200);
-      stop();
-      delay(100);
-      turn_left_180();
-      stop();
-      delay(100);
-      stage+=1;
-      break;
-    }
-      else
-      {
-        if ((millis() - current_time) > 1000){
-          oled.clearDisplay(); 
-          oled.setCursor(0, 0);
-          oled.print("Moving Forward");
-          oled.display();
-          current_time = millis();
-        }
-        //Serial.println("Moving Forward");
-        set_forward();
-        line_follow(); 
-      }
-  }
-  }
-}
+// void _to_unload()
+// {
+//   if (stage == 11){
+//   current_time = millis();
+//   turn_right_until_middle();
+//   stop();
+//   delay(100);
+//   read_ir();
+//   while (true)
+//   {
+//     if (IR_Bin_val[1]==0 && IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0 && IR_Bin_val[6]==0)
+//     {
+//       Serial.println("Box Unloaded");
+//       stop();
+//       delay(100);
+//       forward();
+//       delay(200);
+//       stop();
+//       delay(200);
+//       arm_up();
+//       delay(300);
+//       backward();
+//       delay(t+200);
+//       stop();
+//       delay(100);
+//       turn_left_180();
+//       stop();
+//       delay(100);
+//       stage+=1;
+//       break;
+//     }
+//       else
+//       {
+//         if ((millis() - current_time) > 1000){
+//           oled.clearDisplay(); 
+//           oled.setCursor(0, 0);
+//           oled.print("Moving Forward");
+//           oled.display();
+//           current_time = millis();
+//         }
+//         //Serial.println("Moving Forward");
+//         set_forward();
+//         line_follow(); 
+//       }
+//   }
+//   }
+// }
 
 void unload_to_T_junction()
 {
-  if (stage==12)
+  if (stage==11)
   {
     current_time = millis();
     while (true)
@@ -1980,7 +2028,7 @@ void unload_to_T_junction()
 
 void waiting_for_go()
 {
-  if (stage==13){
+  if (stage==12){
   radio.startListening();
   while(!radio.available()) 
   {
@@ -1993,7 +2041,7 @@ void waiting_for_go()
 
 void T_junction_to_()
 {
-  if (stage==14)
+  if (stage==13)
   {
     current_time = millis();
     read_ir();
@@ -2046,7 +2094,7 @@ void T_junction_to_()
 
 void _to_obstacle()
 {
-  if (stage==15)
+  if (stage==14)
   {
     current_time = millis();
     read_ir();
@@ -2077,7 +2125,143 @@ void _to_obstacle()
       delay(10);
       x=measure_distance();
   }
+  stage+=1;
   }
+}
+
+void obstacle_to_()
+{
+  if (stage==15)
+  {
+    current_time = millis();
+    read_ir();
+    float x = measure_distance();
+    delay(20);
+    while (x<15)
+    {
+      if(IR_Bin_val[0]==1 && IR_Bin_val[1]==1 && IR_Bin_val[6]==0 && IR_Bin_val[7]==0)
+      {
+        stop();
+        delay(100);
+        turn_right_until_middle();
+        delay(100);
+        stage+=1;
+      }
+  }
+}
+
+void _to_finish()
+{
+ if (stage==16)
+ {
+   int count = 0;
+    while (true) {
+      read_ir();
+      if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1) && (IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))   //IR_Bin_val[5] == 0 && 
+      {
+        count+=1;
+        if (count==2)
+        {
+          for (int i=0;i<2;i++)
+        {
+          backward();
+          delay(500);
+          stop();
+          delay(100);
+          set_forward();
+          read_ir();
+          while (!(IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
+          {
+            line_follow();
+          }
+          stop();
+          delay(100);
+          // while (!(IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0))
+          // {
+          //   read_ir();
+          //   backward();
+          // }
+        }
+        oled.clearDisplay();
+        oled.setCursor(0,0);
+        oled.print("All Tasks Done!!!");
+        oled.display();
+        tone(buzzer,1000);
+        delay(1000);
+        noTone(buzzer);
+        stage+=1;
+        break;
+        }
+        oled.clearDisplay(); 
+        oled.setCursor(0, 0);
+        oled.print("Right Junction");
+        oled.display();
+        Serial.println("Right Junction");
+        //Serial.println("We are at a right junction");
+        stop();
+        delay(100);
+        forward();
+        delay(300);
+        stop();
+        delay(100);
+        Serial.println("Turning Left");
+        oled.setCursor(0, 16);
+        oled.print("Turning Left");
+        oled.display();
+        turn_left_until_middle();
+        stop();
+        delay(100); 
+      }
+
+      else if (IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)
+      {
+        count+=1;
+        if (count==2)
+        {
+          for (int i=0;i<2;i++)
+        {
+          backward();
+          delay(500);
+          stop();
+          delay(100);
+          set_forward();
+          read_ir();
+          while (!(IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[3] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
+          {
+            line_follow();
+          }
+          stop();
+          delay(100);
+          // while (!(IR_Bin_val[2]==0 && IR_Bin_val[3]==0 && IR_Bin_val[4]==0 && IR_Bin_val[5]==0))
+          // {
+          //   read_ir();
+          //   backward();
+          // }
+        }
+        oled.clearDisplay();
+        oled.setCursor(0,0);
+        oled.print("All Tasks Done!!!");
+        oled.display();
+        tone(buzzer,1000);
+        delay(1000);
+        noTone(buzzer);
+        stage+=1;
+        break;}
+      }
+      else {
+        if ((millis() - current_time) > 1000){
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Moving Forward");
+          current_time = millis();
+        }
+        //Serial.println("Moving Forward");
+        set_forward();
+        line_follow();
+        //pid_forward(15);
+      }     
+   }
+ }  
 }
 
 // void T_junction_to_finish()
@@ -2179,7 +2363,7 @@ void gate_down()
 {
 for(int i=90;i>=0;i-=20){
   gate_servo.write(i);     
-  delay(500);
+  delay(50);
   }
 }
 
