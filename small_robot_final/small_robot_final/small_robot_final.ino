@@ -328,7 +328,50 @@
 
 
 void loop() {
-  // backward();
+  // forward();
+  // delay(100);
+  // read_ir();
+  //   while (!(IR_Bin_val[0]==1 && IR_Bin_val[1]==1 && IR_Bin_val[2]==1 && IR_Bin_val[3]==1 && IR_Bin_val[4]==1 && IR_Bin_val[5]==1 && IR_Bin_val[6]==1 && IR_Bin_val[7]==1))
+  //   {
+  //     line_follow();
+  //     if ((IR_Bin_val[0] == 1 || IR_Bin_val[1] == 1 || IR_Bin_val[2] == 1 || IR_Bin_val[3] == 1 || IR_Bin_val[4] == 1 || IR_Bin_val[5] == 1 || IR_Bin_val[6] == 1 || IR_Bin_val[7] == 1))
+  //     {
+  //       for (int i = 0; i < 8; i++)
+  //       {
+  //         if (IR_Bin_val[i] == 1)
+  //         {
+  //           idx = i;
+  //         }
+  //       }
+
+  //       if (idx < 3)
+  //       {
+  //         lcd.clear();
+  //         lcd.setCursor(0, 0);
+  //         lcd.print("Line on right");
+  //         Serial.println("Line on right");
+  //         stop();
+  //         delay(100);
+  //         turn_right_until_middle();
+  //         delay(100);
+  //       }
+
+  //       else if (idx > 3)
+  //       {
+  //         lcd.clear();
+  //         lcd.setCursor(0, 0);
+  //         lcd.print("Line on left");
+  //         Serial.println("Line of left");
+  //         stop();
+  //         delay(100);
+  //         turn_left_until_middle();
+  //         delay(100);
+  //       }
+  //     }
+  //   }
+
+  line_follow();
+      
   // delay(10);
   // forward();
   // delay(10);
@@ -368,7 +411,7 @@ void loop() {
 
 
   //backward();
-  line_follow();
+ // line_follow();
   // things to do in an every cycle
   //  update_btns();
 
@@ -1353,6 +1396,40 @@ void _to_checkpoint1()
     while (!(IR_Bin_val[0]==1 && IR_Bin_val[1]==1 && IR_Bin_val[2]==1 && IR_Bin_val[3]==1 && IR_Bin_val[4]==1 && IR_Bin_val[5]==1 && IR_Bin_val[6]==1 && IR_Bin_val[7]==1))
     {
       line_follow();
+      if ((IR_Bin_val[0] == 1 || IR_Bin_val[1] == 1 || IR_Bin_val[2] == 1 || IR_Bin_val[3] == 1 || IR_Bin_val[4] == 1 || IR_Bin_val[5] == 1 || IR_Bin_val[6] == 1 || IR_Bin_val[7] == 1))
+      {
+        for (int i = 0; i < 8; i++)
+        {
+          if (IR_Bin_val[i] == 1)
+          {
+            idx = i;
+          }
+        }
+
+        if (idx < 3)
+        {
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Line on right");
+          Serial.println("Line on right");
+          stop();
+          delay(100);
+          turn_right_until_middle();
+          delay(100);
+        }
+
+        else if (idx > 3)
+        {
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Line on left");
+          Serial.println("Line of left");
+          stop();
+          delay(100);
+          turn_left_until_middle();
+          delay(100);
+        }
+      }
     }
     stop();
     delay(100);

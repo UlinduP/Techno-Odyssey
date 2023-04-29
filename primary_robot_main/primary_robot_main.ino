@@ -1537,7 +1537,8 @@ void read_received_box_color()
   if (stage == 7)
   {
     radio.startListening();
-    while (color != 1 && color!=2 && color != 3 && color!=4 && color != 5)
+    current_time = millis();
+    while ((color != 1 && color!=2 && color != 3 && color!=4 && color != 5) || ((millis()-current_time)>20000))
     {
       if (radio.available())
         {
@@ -2031,7 +2032,7 @@ void waiting_for_go()
   if (stage==12){
     radio.startListening();
     int evans = 0;
-    while (evans != 100)
+    while ((evans != 100) || ((millis()-current_time)>30000))
     {
       if (radio.available())
         {
