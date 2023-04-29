@@ -161,6 +161,7 @@ int read_color_sensor();
 void radio_send();
 int read_received_color_value();
 void start_to_checkpoint1();
+void send_start_signal_to_small_robot();
 void checkpoint1();
 void checkpoint_follow();
 void checkpoint1_to_();
@@ -918,6 +919,17 @@ void start_to_checkpoint1()
   }
 }
 
+void send_start_signal_to_small_robot()
+{
+    radio.stopListening()
+    int start=6;
+    for (int i=0;i<=20;i++)
+    {
+       radio.write(&start, sizeof(start));
+       delay(100);
+    }
+}
+
 void checkpoint1()
 {
   if (stage == 1)
@@ -950,7 +962,8 @@ void checkpoint1()
           delay(100);
         }
         gate_down();
-        delay(10000);
+        send_start_signal_to_small_robot();
+        delay(5000);
         gate_up();
         delay(1000);
         forward();
@@ -2134,6 +2147,7 @@ void _to_obstacle()
       delay(20);
       x=measure_distance();
   }
+  stop();
   stage+=1;
   }
 }
@@ -2157,6 +2171,21 @@ void obstacle_to_()
         stage+=1;
         break;
       }
+      else
+      {
+        if ((millis() - current_time) > 1000){
+          oled.clearDisplay(); 
+          oled.setCursor(0, 0);
+          oled.print("Moving Forward");
+          oled.display();
+          current_time = millis();
+        }
+        //Serial.println("Moving Forward");
+        set_forward();
+        line_follow(); 
+      }
+      delay(20);
+      x=measure_distance();
     }
   }
 }
