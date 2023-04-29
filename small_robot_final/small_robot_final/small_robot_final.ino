@@ -111,7 +111,7 @@
 
   //front values
   float Kp = 38;//25;  //22,0 wada//80 //25
-  float Kd = 0.005;//10; // 8//50 //10
+  float Kd = 0;//10; // 8//50 //10                         //0.005
   float Ki = 0;
 
   float P, D;
@@ -328,10 +328,10 @@
 
 
 void loop() {
-  backward();
-  delay(10);
-  forward();
-  delay(10);
+  // backward();
+  // delay(10);
+  // forward();
+  // delay(10);
   // read_ir();
   // if (IR_Bin_val[0] == 1 || IR_Bin_val[1] == 1 || IR_Bin_val[2] == 1 || IR_Bin_val[3] == 1 || IR_Bin_val[4] == 1 || IR_Bin_val[5] == 1 || IR_Bin_val[6] == 1 || IR_Bin_val[7] == 1)
   //     {
@@ -368,7 +368,7 @@ void loop() {
 
 
   //backward();
-  //line_follow();
+  line_follow();
   // things to do in an every cycle
   //  update_btns();
 
@@ -382,7 +382,7 @@ void loop() {
   //   //displayIr(String(IR_val[i]));
   // }
   // Serial.println(" ");
-  // //delay(500);
+  // delay(500);
   // int a = millis() - t1;
   // if (( a > 0) && (a > 100)) {
   
