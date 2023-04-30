@@ -99,8 +99,8 @@
   int LMotorSpeed = 0;
   int RMotorSpeed = 0;
   int speed_adjust = 0;
-  int Left_MotorBase_speed =167;//  
-  int Right_MotorBase_speed =150;//    
+  int Left_MotorBase_speed =167;//167;//  
+  int Right_MotorBase_speed =140;//150;//    
   int max_speed = 255;
   int min_speed = 50 ;
 
@@ -186,6 +186,7 @@
   void start_command();
   void _to_checkpoint1();
   void checkpoint_one_to_gate_A();
+  void send_box_color();
   void gate_A_to_vault();
   void vault_to_ramp_junction();
   void ramp_junction_to_ramp_start();
@@ -195,6 +196,7 @@
   void ramp_end_to_T();
   void send_obstacle_removed();
   void T_to_ramp_end();
+  void send_ok();
   void ramp_end_to_pole_junction();
   void pole_junction_to_pole();
   void pole_to_pole_junction();
@@ -323,148 +325,26 @@
   //   stop();
   //   delay(100000);
 
-  stage = 0;
+  stage = 1;
 }
 
 
 void loop() {
-  // forward();
-  // delay(100);
-  // read_ir();
-  //   while (!(IR_Bin_val[0]==1 && IR_Bin_val[1]==1 && IR_Bin_val[2]==1 && IR_Bin_val[3]==1 && IR_Bin_val[4]==1 && IR_Bin_val[5]==1 && IR_Bin_val[6]==1 && IR_Bin_val[7]==1))
-  //   {
-  //     line_follow();
-  //     if ((IR_Bin_val[0] == 1 || IR_Bin_val[1] == 1 || IR_Bin_val[2] == 1 || IR_Bin_val[3] == 1 || IR_Bin_val[4] == 1 || IR_Bin_val[5] == 1 || IR_Bin_val[6] == 1 || IR_Bin_val[7] == 1))
-  //     {
-  //       for (int i = 0; i < 8; i++)
-  //       {
-  //         if (IR_Bin_val[i] == 1)
-  //         {
-  //           idx = i;
-  //         }
-  //       }
 
-  //       if (idx < 3)
-  //       {
-  //         lcd.clear();
-  //         lcd.setCursor(0, 0);
-  //         lcd.print("Line on right");
-  //         Serial.println("Line on right");
-  //         stop();
-  //         delay(100);
-  //         turn_right_until_middle();
-  //         delay(100);
-  //       }
+//line_follow();
 
-  //       else if (idx > 3)
-  //       {
-  //         lcd.clear();
-  //         lcd.setCursor(0, 0);
-  //         lcd.print("Line on left");
-  //         Serial.println("Line of left");
-  //         stop();
-  //         delay(100);
-  //         turn_left_until_middle();
-  //         delay(100);
-  //       }
-  //     }
-  //   }
-
-  line_follow();
-      
-  // delay(10);
-  // forward();
-  // delay(10);
-  // read_ir();
-  // if (IR_Bin_val[0] == 1 || IR_Bin_val[1] == 1 || IR_Bin_val[2] == 1 || IR_Bin_val[3] == 1 || IR_Bin_val[4] == 1 || IR_Bin_val[5] == 1 || IR_Bin_val[6] == 1 || IR_Bin_val[7] == 1)
-  //     {
-  //       for (int i = 0; i < 8; i++)
-  //       {
-  //         if (IR_Bin_val[i] == 1)
-  //         {
-  //           idx = i;
-  //         }
-  //       }
-
-  //       if (idx < 3)
-  //       {
-  //         stop();
-  //       digitalWrite(IN1, LOW);
-  // digitalWrite(IN2, LOW);
-  // digitalWrite(IN3, LOW);
-  // digitalWrite(IN4, LOW);
-  // digitalWrite(ENA, HIGH);
-  // digitalWrite(ENB, HIGH);
-  //         //delay(100);
-  //         //turn_right_until_middle();
-  //         //delay(100);
-  //       }
-
-  //       else if (idx > 3)
-  //       {
-  //         stop();
-  //         //delay(100);
-  //         //turn_left_until_middle();
-  //         //delay(100);
-  //       }}
-
-
-
-  //backward();
- // line_follow();
-  // things to do in an every cycle
-  //  update_btns();
-
-
-  // things to execute in a given time  interval
-  // read_ir();
-  // for (int i=0;i<8;i++){
-  //   Serial.print(IR_val[i]);
-    
-  //   Serial.print(" ");
-  //   //displayIr(String(IR_val[i]));
-  // }
-  // Serial.println(" ");
-  // delay(500);
-  // int a = millis() - t1;
-  // if (( a > 0) && (a > 100)) {
-  
-  //   if (true) { //state = "stop"){
-  //     read_ir();
-  //     for (int p : IR_Bin_val) {
-  //       bluetoothSerial.print(p);
-  //       bluetoothSerial.print(" ");
-  //     }
-  //     bluetoothSerial.println("");
-  //   }
-  //   t1 = millis();
-  // }
-  // // bluetoothSerial.println("hi");
-  // //things look for in every cycle
-  // // if commanded through bluetooth
-  // if (bluetoothSerial.available()) {
-  //   bluetoothTxt = read_bluetooth();
-  //   //execute the command
-  // }
-
-  // // if commanded through serial monitor
-  // if (Serial.available()) {
-  //   serialTxt = read_Serial();
-  //   //execute the command
-  // }
 
 // start_command();
-// _to_checkpoint1();
+//_to_checkpoint1();
 //  checkpoint_one_to_gate_A();
 //  gate_A_to_vault();
 //  vault_to_ramp_junction();
 //   ramp_junction_to_ramp_start();
 //  ramp_start_to_gate_B();
-// // ramp();
 //  gate_B_to_ramp_end();
 // ramp_end_to_T();
-// //send_obstacle_removed();
 //  T_to_ramp_end();
+//  send_obstacle_removed();
 // ramp_end_to_pole_junction();
 // pole_junction_to_pole();
 //  pole_to_pole_junction();
@@ -707,7 +587,7 @@ float measure_distance() {
 // color sensor functions
 int read_color_sensor() {
   int i = 0;
-  int R_val = 0, G_val = 0, B_val = 0, W_val = 0, O_val = 0;
+  int R_val = 0, G_val = 0, B_val = 0, GR_val = 0, W_val = 0;
   do
   {
     digitalWrite(S2, LOW);
@@ -725,8 +605,8 @@ int read_color_sensor() {
     if ((redfrequency > 30 && redfrequency < 95) && (bluefrequency > 60 && bluefrequency < 123) && (greenfrequency > 80 && greenfrequency < 160)) R_val++;
     else if ((redfrequency > 110 && redfrequency < 190) && (bluefrequency > 80 && bluefrequency < 165) && (greenfrequency > 70 && greenfrequency < 180)) G_val++;
     else if ((redfrequency > 110 && redfrequency < 190) && (bluefrequency > 30 && bluefrequency < 120) && (greenfrequency > 70 && greenfrequency < 190)) B_val++;
+    else if ((redfrequency > 20 && redfrequency < 80) && (bluefrequency > 60 && bluefrequency < 123) && (greenfrequency > 80 && greenfrequency < 160)) GR_val++;
     else if (bluefrequency < 100 && redfrequency < 100 && greenfrequency < 100) W_val++;
-    else O_val++;
     i++;
   }
   while (i < 50);
@@ -734,8 +614,9 @@ int read_color_sensor() {
   if (R_val > 40) return 1;
   else if (G_val > 40) return 2;
   else if (B_val > 40) return 3;
-  else if (W_val > 40) return 4;
-  else return 5;
+  else if (GR_val > 40) return 4;
+  else if (W_val > 40) return 5;
+  
 }
 
 
@@ -1376,14 +1257,18 @@ void radio_send()
 
 void start_command()
 {
-  if (stage==0)
-  {
+  if (stage==0){
     radio.startListening();
-    while(!radio.available()) 
+    int evans = 0;
+    while (evans != 6)
     {
-      continue;
-    }
-    radio.stopListening();
+      if (radio.available())
+        {
+          radio.read(&evans, sizeof(evans));
+          Serial.println(evans);
+        }
+        //delay(1000);
+      }
     stage+=1;
   }
 }
@@ -1392,10 +1277,17 @@ void _to_checkpoint1()
 {
   if (stage == 1)
   {
+    backward();
+  Left_MotorBase_speed =167; 
+  Right_MotorBase_speed =140;
+
+    while (!(IR_Bin_val[0]==1 || IR_Bin_val[1]==1 || IR_Bin_val[2]==1 || IR_Bin_val[3]==1 || IR_Bin_val[4]==1 || IR_Bin_val[5]==1 || IR_Bin_val[6]==1 || IR_Bin_val[7]==1))
+   {
+      backward();
+   }
+   stop();
+   delay(1000000000);
     read_ir();
-    while (!(IR_Bin_val[0]==1 && IR_Bin_val[1]==1 && IR_Bin_val[2]==1 && IR_Bin_val[3]==1 && IR_Bin_val[4]==1 && IR_Bin_val[5]==1 && IR_Bin_val[6]==1 && IR_Bin_val[7]==1))
-    {
-      line_follow();
       if ((IR_Bin_val[0] == 1 || IR_Bin_val[1] == 1 || IR_Bin_val[2] == 1 || IR_Bin_val[3] == 1 || IR_Bin_val[4] == 1 || IR_Bin_val[5] == 1 || IR_Bin_val[6] == 1 || IR_Bin_val[7] == 1))
       {
         for (int i = 0; i < 8; i++)
@@ -1428,9 +1320,9 @@ void _to_checkpoint1()
           delay(100);
           turn_left_until_middle();
           delay(100);
-        }
+       }
       }
-    }
+   }
     stop();
     delay(100);
     forward();
@@ -1514,7 +1406,6 @@ void _to_checkpoint1()
     stage+=1;
 
 
-  }
 }
 
 void checkpoint_follow()
@@ -1563,7 +1454,7 @@ void checkpoint_follow()
 
 void checkpoint_one_to_gate_A()
 {
-  if (stage == 0)
+  if (stage == 2)
   {
     current_time = millis();
     measure_distance();
@@ -1598,12 +1489,22 @@ void checkpoint_one_to_gate_A()
     }
 }
 
+void send_box_color()
+{
+    radio.stopListening();
+    for (int i=0;i<=20;i++)
+    {
+       radio.write(&color, sizeof(color));
+       delay(100);
+    }
+}
+
 void gate_A_to_vault()
 {
   measure_distance();
   delay(20);
   float x = measure_distance();
-  if (stage == 1 && x > 8)
+  if (stage == 3 && x > 8)
   { 
     lcd.clear();
     lcd.setCursor(0, 0);
@@ -1697,7 +1598,7 @@ void gate_A_to_vault()
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print(color);
-    //radio_send();
+    send_box_color();
     //delay(100000000);
 //    radio_send();
 //    delay(100);
@@ -1709,7 +1610,7 @@ void gate_A_to_vault()
 
 void vault_to_ramp_junction()
 {
-  if (stage == 2)
+  if (stage == 4)
   {
     int white_count = 0;
     int idx;
@@ -1792,7 +1693,7 @@ void vault_to_ramp_junction()
 
 void ramp_junction_to_ramp_start()
 {
-  if (stage == 3)
+  if (stage == 5)
   {
     measure_distance();
     delay(20);
@@ -1818,7 +1719,7 @@ void ramp_junction_to_ramp_start()
 
 void ramp_start_to_gate_B()
 {
-  if (stage == 4)
+  if (stage == 6)
   {
     measure_distance();
     delay(20);
@@ -1925,7 +1826,7 @@ void gate_B_to_ramp_end()  //hari
   measure_distance();
   delay(20);
   float x = measure_distance();
-  if (stage == 5 && x > 8)
+  if (stage == 7 && x > 8)
   {
     Left_MotorBase_speed = 80;  // lower speed for coming down the hill
     Right_MotorBase_speed = 80;
@@ -1954,7 +1855,7 @@ void gate_B_to_ramp_end()  //hari
 
 void ramp_end_to_T()  
 {
-  if (stage == 6)
+  if (stage == 8)
   { read_ir();
   set_forward();
     while (!(IR_Bin_val[0] == 0 && IR_Bin_val[1] == 0 && IR_Bin_val[2] == 0 && IR_Bin_val[4] == 0 && IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0))
@@ -1976,7 +1877,7 @@ void ramp_end_to_T()
 
 void T_to_ramp_end()
 {
-  if (stage == 7)
+  if (stage == 9)
   {
     read_ir();
     set_forward();
@@ -2009,9 +1910,21 @@ void T_to_ramp_end()
   }
 }
 
+void send_ok()
+{
+  if (stage==10)
+    radio.stopListening();
+    int ok=100;
+    for (int i=0;i<=20;i++)
+    {
+       radio.write(&ok, sizeof(ok));
+       delay(100);
+    } 
+}
+
 void ramp_end_to_pole_junction()
 {
-  if (stage == 8)
+  if (stage == 11)
   {
     //int temp=0;
     while (true)
@@ -2046,7 +1959,7 @@ void ramp_end_to_pole_junction()
 
 void pole_junction_to_pole()
 {
-  if (stage == 9)
+  if (stage == 12)
   {
     measure_distance();
     delay(20);
@@ -2087,7 +2000,7 @@ void pole_junction_to_pole()
 
 void pole_to_pole_junction()
 {
-  if (stage == 10)
+  if (stage == 13)
   {
     while (!(IR_Bin_val[7]==1 && IR_Bin_val[6]==1))
     {
@@ -2119,7 +2032,7 @@ void pole_to_pole_junction()
 
 void pole_junction_to_finish()
 {
-  if (stage == 11)
+  if (stage == 14)
   {
     read_ir();
     set_forward();
@@ -2132,7 +2045,7 @@ void pole_junction_to_finish()
     stop();
     lcd.clear();
     lcd.setCursor(0, 0);
-    lcd.print("Api eka");
+    lcd.print("Done !!");
     stage+=1;
   }
 }

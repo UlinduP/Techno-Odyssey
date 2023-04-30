@@ -199,7 +199,7 @@ void setup()
   gate_servo.attach(gate_servo_pin);
   arm_servo.attach(arm_servo_pin);
   arm_servo.write(180);   //85 down  //180 up
-  gate_servo.write(120);
+  gate_servo.write(50);   //120
 
   //initialize the oled
   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -282,52 +282,30 @@ void loop()
 //    lcd.print(counter);
     current_time = millis();
   } 
-   //start_to_checkpoint1();
-    //forward();
-
-    //line_follow();
-
-//     read_ir();
-   
-//    t=250;
-//    start_to_checkpoint1();
-//    checkpoint1();
-// //    t=300;  
-//   checkpoint1_to_();
-//    _to_straight_path();  
-// straight_path_to_();
-// _to_dotted_line();
-// dotted_line_to_checkpoint2();
-//   delay(1000000000000000);
 
 
-     start_to_checkpoint1();
-     checkpoint1();
-     checkpoint1_to_();
-    _to_straight_path();
-   straight_path_to_();
-    _to_dotted_line();
-    dotted_line_to_checkpoint2();
-    read_received_box_color();
-    checkpoint2_to_L_junction();
-    L_junction_to_box_pickup();
-   box_pickup_to_unload();
-unload_to_T_junction();
-waiting_for_go();
- T_junction_to_();
- _to_obstacle();
-obstacle_to_();
- _to_finish();
-
-
-//temp();
+ //     start_to_checkpoint1();
+//      checkpoint1();
+//      checkpoint1_to_();
+//     _to_straight_path();
+//    straight_path_to_();
+//     _to_dotted_line();
+//     dotted_line_to_checkpoint2();
+//     read_received_box_color();
+//     checkpoint2_to_L_junction();
+//     L_junction_to_box_pickup();
+//    box_pickup_to_unload();
+// unload_to_T_junction();
+// waiting_for_go();
+//  T_junction_to_();
+//  _to_obstacle();
+// obstacle_to_();
+//  _to_finish();
 
 
 
-  //delay(1000000);
-
-    //line_follow();
 }
+
 
 void set_rgb_color(int r, int g, int b)
 {
@@ -921,7 +899,7 @@ void start_to_checkpoint1()
 
 void send_start_signal_to_small_robot()
 {
-    radio.stopListening()
+    radio.stopListening();
     int start=6;
     for (int i=0;i<=20;i++)
     {
@@ -1561,6 +1539,7 @@ void read_received_box_color()
         //delay(1000);
       }
     stage+=1;
+    radio.stopListening();
     }
 }
 
@@ -2055,6 +2034,7 @@ void waiting_for_go()
         //delay(1000);
       }
     stage+=1;
+    radio.stopListening();
   }
 }
 
@@ -2160,7 +2140,7 @@ void obstacle_to_()
     read_ir();
     float x = measure_distance();
     delay(20);
-    while (x<15)
+    while (x>15)
     {
       if(IR_Bin_val[0]==1 && IR_Bin_val[1]==1 && IR_Bin_val[6]==0 && IR_Bin_val[7]==0)
       {
@@ -2289,6 +2269,7 @@ void _to_finish()
         noTone(buzzer);
         forward();
         delay(600);
+        stop();
         stage+=1;
         break;}
       }
