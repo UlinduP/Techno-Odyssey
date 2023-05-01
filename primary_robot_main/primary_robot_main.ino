@@ -83,8 +83,8 @@ Servo gate_servo;
 //const int buttonPin[] = {31, 32, 33, 34};     // the number of the pushbutton pins
 
 
-int Threshold = 150;
-int IR_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
+int Threshold = 200;
+int IR_val[8] =  {0, 0, 0, 0, 0, 0, 0, 0};        // IR_Bin_val[0] - left side IR sensor  // IR_Bin_val[10] - right side IR sensor
 int IR_Bin_val[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 double IR_weights[8] = {-15,-6,-2,-1,1,2,6,15};//{-16, -8, -4, -2, 2, 4, 8, 16}; //{-4, -3, -2, 0, 0, 2, 3, 4}  {-8, -4, -2, 0, 0, 2, 4, 8}
 
@@ -199,7 +199,7 @@ void setup()
   gate_servo.attach(gate_servo_pin);
   arm_servo.attach(arm_servo_pin);
   arm_servo.write(180);   //85 down  //180 up
-  gate_servo.write(50);   //120
+  gate_servo.write(90);   //120
 
   //initialize the oled
   oled.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -272,35 +272,41 @@ void setup()
    read_ir();
      stage=0;
 
+
+// forward();
+// delay(t);
+// stop();
 }
+
+
 
 void loop()
 {
-  if((millis()-current_time)>1000){
-    read_ir();
-    display_ir();
-//    lcd.print(counter);
-    current_time = millis();
-  } 
+//   if((millis()-current_time)>1000){
+//     read_ir();
+//     display_ir();
+// //    lcd.print(counter);
+//     current_time = millis();
+//   } 
 
 
- //     start_to_checkpoint1();
-//      checkpoint1();
-//      checkpoint1_to_();
-//     _to_straight_path();
-//    straight_path_to_();
-//     _to_dotted_line();
-//     dotted_line_to_checkpoint2();
-//     read_received_box_color();
-//     checkpoint2_to_L_junction();
-//     L_junction_to_box_pickup();
-//    box_pickup_to_unload();
-// unload_to_T_junction();
-// waiting_for_go();
-//  T_junction_to_();
-//  _to_obstacle();
-// obstacle_to_();
-//  _to_finish();
+     start_to_checkpoint1();
+     checkpoint1();
+     checkpoint1_to_();
+    _to_straight_path();
+   straight_path_to_();
+    _to_dotted_line();
+    dotted_line_to_checkpoint2();
+    read_received_box_color();
+    checkpoint2_to_L_junction();
+    L_junction_to_box_pickup();
+   box_pickup_to_unload();
+unload_to_T_junction();
+waiting_for_go();
+ T_junction_to_();
+ _to_obstacle();
+obstacle_to_();
+ _to_finish();
 
 
 
@@ -637,7 +643,7 @@ float measure_distance(){
 int read_color_sensor()
 {
   int i=0;
-  int R_val=0,G_val=0,B_val=0,O_val =0,W_val=0;
+  int R_val=0,G_val=0,B_val=0,O_val =0,GR_val=0;
   do
   {
     digitalWrite(S2,LOW);
@@ -652,19 +658,34 @@ int read_color_sensor()
     digitalWrite(S3,HIGH);
     bluefrequency = pulseIn(sensorOut, LOW);
 
-    if ((redfrequency>40 && redfrequency <135) && (bluefrequency>90 && bluefrequency<160) && (greenfrequency>130 && greenfrequency<210)) R_val++;
-    else if  ((redfrequency>130 && redfrequency <210) && (bluefrequency>95 && bluefrequency<155) && (greenfrequency>80 && greenfrequency<170)) G_val++;
-    else if ((redfrequency>150 && redfrequency <220) && (bluefrequency>40 && bluefrequency<115) && (greenfrequency>100 && greenfrequency<185)) B_val++;
-    else if (bluefrequency<100 && redfrequency<100 && greenfrequency<100) W_val++;
-    else O_val++;
-    i++;
+    if ((redfrequency>50 && redfrequency <90) && (bluefrequency>90 && bluefrequency<115) && (greenfrequency>120 && greenfrequency<160))
+  {
+    R_val++;
+  }
+  else if ((redfrequency>110 && redfrequency <180) && (bluefrequency>75 && bluefrequency<130) && (greenfrequency>110 && greenfrequency<160))
+  {
+    G_val++;
+  }
+  else if ((redfrequency>160 && redfrequency <210) && (bluefrequency>65 && bluefrequency<120) && (greenfrequency>120 && greenfrequency<170))
+  {
+    B_val++;
+  }
+  else if (bluefrequency<100 && redfrequency<100 && greenfrequency<100)
+  {
+    GR_val++;
+  }
+  else 
+  {
+    O_val++;
+  }
+
   }
   while (i<51);
 
     if(R_val>40) return 1;
     else if (G_val>40) return 2;
     else if (B_val>40) return 3;
-    else if (W_val>40) return 4;
+    else if (GR_val>40) return 4;
     else return 5;
 }
 
@@ -941,7 +962,7 @@ void checkpoint1()
         }
         gate_down();
         send_start_signal_to_small_robot();
-        delay(5000);
+        delay(10000);
         gate_up();
         delay(1000);
         forward();
@@ -1003,9 +1024,11 @@ void turn_left_90_checkpoint()
     stop();
     delay(50);
 }
+
 void checkpoint_follow()
 {
     read_ir();
+    error=0;
     for (int i = 0; i < 8; i++)
         {
         if (i<3 || i==4)
@@ -1073,7 +1096,7 @@ void checkpoint1_to_()
         turn_left_90();
         delay(100); 
       } 
-      else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 && IR_Bin_val[2] == 1) && (IR_Bin_val[5] == 0 && IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
+      else if ((IR_Bin_val[0] == 1 && IR_Bin_val[1] == 1 ) && ( IR_Bin_val[6] == 0 && IR_Bin_val[7] == 0)){
         oled.clearDisplay(); 
         oled.setCursor(0, 0);
         oled.print("Right Junction");
@@ -1529,7 +1552,7 @@ void read_received_box_color()
   {
     radio.startListening();
     current_time = millis();
-    while ((color != 1 && color!=2 && color != 3 && color!=4 && color != 5) || ((millis()-current_time)>20000))
+    while (true)
     {
       if (radio.available())
         {
@@ -1537,8 +1560,19 @@ void read_received_box_color()
           Serial.println(color);
         }
         //delay(1000);
+      
+        if (millis()-current_time > 20000)
+        {
+          stage+=1;
+          break;
+        }
+
+        else if (color==1 || color ==2 || color==3 || color == 4 || color == 5)
+        {
+          stage+=1;
+          break;
+        }
       }
-    stage+=1;
     radio.stopListening();
     }
 }
@@ -2024,7 +2058,7 @@ void waiting_for_go()
   if (stage==12){
     radio.startListening();
     int evans = 0;
-    while ((evans != 100) || ((millis()-current_time)>30000))
+    while ((evans != 100) && (!(millis()-current_time)>20000))
     {
       if (radio.available())
         {
